@@ -22,6 +22,7 @@ import org.bukkit.event.player.PlayerGameModeChangeEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerPickupItemEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import io.papermc.paper.threadedregions.scheduler.GlobalRegionScheduler;
@@ -57,6 +58,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     private Map<Player, Material> assignedItems = new HashMap<>();
     private Map<Player, Integer> scores = new HashMap<>();
     private Map<Player, BossBar> bossBars = new HashMap<>();
+    private Map<Player, org.bukkit.entity.ArmorStand> itemDisplays = new HashMap<>();
 
     @Override
     public void onEnable() {
@@ -123,6 +125,8 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         if (!available.isEmpty()) {
             Material random = available.get(new Random().nextInt(available.size()));
             assignedItems.put(player, random);
+            // Create floating item display
+            createItemDisplay(player, random);
         }
     }
 
@@ -131,6 +135,40 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         bar.addPlayer(player);
         bossBars.put(player, bar);
         return bar;
+    }
+
+    private void createItemDisplay(Player player, Material item) {
+        // Remove existing display if any
+        removeItemDisplay(player);
+        
+        // Create new ArmorStand
+        org.bukkit.entity.ArmorStand armorStand = player.getWorld().spawn(player.getLocation().add(0, 2.5, 0), org.bukkit.entity.ArmorStand.class);
+        armorStand.setVisible(false);
+        armorStand.setGravity(false);
+        armorStand.setMarker(true);
+        armorStand.setSmall(true);
+        armorStand.setCustomNameVisible(false);
+        
+        // Set the item in hand
+        armorStand.setItemInHand(new org.bukkit.inventory.ItemStack(item));
+        
+        // Store reference
+        itemDisplays.put(player, armorStand);
+    }
+
+    private void removeItemDisplay(Player player) {
+        org.bukkit.entity.ArmorStand armorStand = itemDisplays.remove(player);
+        if (armorStand != null && !armorStand.isDead()) {
+            armorStand.remove();
+        }
+    }
+
+    private void updateItemDisplay(Player player) {
+        org.bukkit.entity.ArmorStand armorStand = itemDisplays.get(player);
+        if (armorStand != null && !armorStand.isDead()) {
+            // Update position to follow player
+            armorStand.teleport(player.getLocation().add(0, 2.5, 0));
+        }
     }
 
     private void updateBossBar(Player player) {
@@ -404,6 +442,10 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         if (timerTask != null) {
             timerTask.cancel();
         }
+        // Remove all floating item displays
+        for (Player p : getServer().getOnlinePlayers()) {
+            removeItemDisplay(p);
+        }
         // Update boss bars
         for (Player p : getServer().getOnlinePlayers()) {
             updateBossBar(p);
@@ -614,6 +656,10 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         // Clear scores and items
         scores.clear();
         assignedItems.clear();
+        // Remove all floating item displays
+        for (Player p : getServer().getOnlinePlayers()) {
+            removeItemDisplay(p);
+        }
         for (Player p : getServer().getOnlinePlayers()) {
             updateBossBar(p);
         }
@@ -677,6 +723,10 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             event.setCancelled(true);
             player.sendTitle("§c§l" + messages.getString("timer-paused-title", "STOP"), messages.getString("timer-paused-subtitle", "Der Timer ist pausiert!"), 10, 70, 20);
         }
+        // Update floating item display position
+        if (itemDisplays.containsKey(player)) {
+            updateItemDisplay(player);
+        }
     }
 
     @EventHandler
@@ -739,5 +789,13 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             updateBossBar(player);
         }
         updateActionBarForPlayer(player);
+    }
+
+    @EventHandler
+    public void onPlayerQuit(PlayerQuitEvent event) {
+        Player player = event.getPlayer();
+        removeItemDisplay(player);
+        assignedItems.remove(player);
+        scores.remove(player);
     }
 }
