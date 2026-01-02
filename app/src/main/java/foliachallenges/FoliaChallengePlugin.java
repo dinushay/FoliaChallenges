@@ -85,6 +85,9 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         if (getCommand("resume") != null) {
             getCommand("resume").setTabCompleter(this);
         }
+        if (getCommand("start") != null) {
+            getCommand("start").setTabCompleter(this);
+        }
         
         getLogger().info("FoliaChallenge enabled!");
         // Setup scheduler
@@ -264,6 +267,14 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             resumeTimer(sender);
             return true;
         }
+        if (command.getName().equalsIgnoreCase("start")) {
+            if (!sender.hasPermission("foliachallenge.timer")) {
+                sender.sendMessage(messages.getString("no-permission", "Du hast keine Berechtigung dafür!"));
+                return true;
+            }
+            startTimer(sender);
+            return true;
+        }
         if (command.getName().equalsIgnoreCase("challenges")) {
             if (!sender.hasPermission("foliachallenge.timer")) {
                 sender.sendMessage(messages.getString("no-permission", "Du hast keine Berechtigung dafür!"));
@@ -386,6 +397,8 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             }
         } else if (cmdName.equals("resume")) {
             return Collections.emptyList(); // No arguments for /resume
+        } else if (cmdName.equals("start")) {
+            return Collections.emptyList(); // No arguments for /start
         }
         return null;
     }
