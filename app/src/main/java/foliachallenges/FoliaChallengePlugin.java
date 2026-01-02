@@ -919,6 +919,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             }
             // If there is remaining time saved, keep timer paused — admins can resume manually
             if (remainingSeconds > 0) {
+                timerSet = true;
                 getLogger().info("Found remaining time in data.yml: " + remainingSeconds + "s. Timer is paused on startup.");
             }
         } catch (Exception e) {
