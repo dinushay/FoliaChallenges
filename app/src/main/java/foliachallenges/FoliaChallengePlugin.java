@@ -92,6 +92,10 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
 
     @Override
     public void onDisable() {
+        // Remove all floating item displays
+        for (Player p : getServer().getOnlinePlayers()) {
+            removeItemDisplay(p);
+        }
         if (actionBarTask != null) {
             actionBarTask.cancel();
         }
@@ -166,8 +170,8 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     private void updateItemDisplay(Player player) {
         org.bukkit.entity.ArmorStand armorStand = itemDisplays.get(player);
         if (armorStand != null && !armorStand.isDead()) {
-            // Update position to follow player above their head
-            armorStand.teleport(player.getLocation().add(0, 2.2, 0));
+            // Update position to follow player above their head (Folia requires teleportAsync)
+            armorStand.teleportAsync(player.getLocation().add(0, 2.2, 0));
         }
     }
 
@@ -723,8 +727,12 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             event.setCancelled(true);
             player.sendTitle("§c§l" + messages.getString("timer-paused-title", "STOP"), messages.getString("timer-paused-subtitle", "Der Timer ist pausiert!"), 10, 70, 20);
         }
-        // Update floating item display position
-        if (itemDisplays.containsKey(player)) {
+        // Remove floating item displays when timer is not running
+        if (!timerRunning && itemDisplays.containsKey(player)) {
+            removeItemDisplay(player);
+        }
+        // Update floating item display position only when timer is running
+        else if (timerRunning && itemDisplays.containsKey(player)) {
             updateItemDisplay(player);
         }
     }
