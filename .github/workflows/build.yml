@@ -25,11 +25,8 @@ jobs:
     - name: Build with Gradle
       run: ./gradlew build
     
-    - name: Rename JAR
-      run: cp app/build/libs/app.jar FoliaChallenges.jar
-    
     - name: Upload JAR as artifact
       uses: actions/upload-artifact@v4
       with:
         name: FoliaChallenges
-        path: FoliaChallenges.jar
+        path: app/build/libs/FoliaChallenges.jar

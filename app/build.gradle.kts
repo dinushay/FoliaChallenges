@@ -42,7 +42,7 @@ application {
 }
 
 tasks.jar {
-    archiveBaseName.set("FoliaChallenge")
+    archiveBaseName.set("FoliaChallenges")
     archiveClassifier.set("")
     archiveVersion.set("")
 }
