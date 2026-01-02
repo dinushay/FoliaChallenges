@@ -275,7 +275,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             }
 
             if (args.length == 0) {
-                sender.sendMessage(messages.getString("usage-timer", "Usage: /timer <start|stop|setcountdown|resume> [minutes]"));
+                sender.sendMessage(messages.getString("usage-timer", "Usage: /timer <start|stop|set|resume> [minutes]"));
                 return true;
             }
 
@@ -288,9 +288,9 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                 case "stop":
                     stopTimer(sender);
                     break;
-                case "setcountdown":
+                case "set":
                     if (args.length < 2) {
-                        sender.sendMessage(messages.getString("usage-timer-set", "Usage: /timer setcountdown <minutes>"));
+                        sender.sendMessage(messages.getString("usage-timer-set", "Usage: /timer set <minutes>"));
                         return true;
                     }
                     try {
@@ -301,7 +301,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                     }
                     break;
                 default:
-                    sender.sendMessage(messages.getString("usage-timer", "Usage: /timer <start|stop|setcountdown|resume> [minutes]"));
+                    sender.sendMessage(messages.getString("usage-timer", "Usage: /timer <start|stop|set|resume> [minutes]"));
                     break;
             }
             return true;
@@ -340,12 +340,12 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                 List<String> completions = new ArrayList<>();
                 completions.add("start");
                 completions.add("stop");
-                completions.add("setcountdown");
+                completions.add("set");
                 completions.add("resume");
                 return completions.stream()
                     .filter(s -> s.toLowerCase().startsWith(args[0].toLowerCase()))
                     .collect(Collectors.toList());
-            } else if (args.length == 2 && args[0].equalsIgnoreCase("setcountdown")) {
+            } else if (args.length == 2 && args[0].equalsIgnoreCase("set")) {
                 return Collections.emptyList(); // No suggestions for minutes
             }
         } else if (cmdName.equals("resume")) {
@@ -453,12 +453,16 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
 
     private void listItems(CommandSender sender) {
         sender.sendMessage("§6§l=== Assigned Items ===");
+        boolean hasItems = false;
         for (Player p : getServer().getOnlinePlayers()) {
             Material item = assignedItems.get(p);
-            String itemName = item != null ? formatItemName(item.name()) : "Kein Item";
-            sender.sendMessage("§f" + p.getName() + " §7- §a" + itemName);
+            if (item != null) {
+                String itemName = formatItemName(item.name());
+                sender.sendMessage("§f" + p.getName() + " §7- §a" + itemName);
+                hasItems = true;
+            }
         }
-        if (assignedItems.isEmpty()) {
+        if (!hasItems) {
             sender.sendMessage("§7Keine Items zugewiesen.");
         }
         sender.sendMessage("§6§l===================");
@@ -466,11 +470,15 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
 
     private void listPoints(CommandSender sender) {
         sender.sendMessage("§6§l=== Player Points ===");
+        boolean hasPoints = false;
         for (Player p : getServer().getOnlinePlayers()) {
             int points = scores.getOrDefault(p, 0);
-            sender.sendMessage("§f" + p.getName() + " §7- §a" + points + " Punkte");
+            if (points > 0) {
+                sender.sendMessage("§f" + p.getName() + " §7- §a" + points + " Punkte");
+                hasPoints = true;
+            }
         }
-        if (scores.isEmpty()) {
+        if (!hasPoints) {
             sender.sendMessage("§7Keine Punkte erzielt.");
         }
         sender.sendMessage("§6§l===================");
