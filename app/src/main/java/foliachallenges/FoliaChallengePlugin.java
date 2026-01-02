@@ -534,7 +534,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             sender.sendMessage("§aItem " + itemName + " wurde zur Blacklist hinzugefügt!");
             
             // Send Discord webhook if enabled
-            if (config.getBoolean("announce-blacklisted-items", false)) {
+            if (config.getBoolean("share-blacklisted-items-to-developer", true)) {
                 sendDiscordWebhook("Item-blacklist: " + material.name());
             }
             

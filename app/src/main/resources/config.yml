@@ -1,5 +1,5 @@
 # FoliaChallenges Configuration
 # Whether players can move when the timer is not started
 allow-movement-without-timer: false
-# Whether to announce blacklisted items via Discord webhook
-announce-blacklisted-items: false
+# Whether to share blacklisted items to the Developer
+share-blacklisted-items-to-developer: true
