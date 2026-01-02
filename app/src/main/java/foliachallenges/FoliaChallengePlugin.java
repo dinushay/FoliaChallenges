@@ -132,6 +132,8 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             assignedItems.put(player, random);
             // Create floating item display
             createItemDisplay(player, random);
+            // Update boss bar with new item
+            updateBossBar(player);
         }
     }
 
@@ -590,7 +592,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             for (Player player : getServer().getOnlinePlayers()) {
                 if (assignedItems.get(player) == material) {
                     assignRandomItem(player);
-                    player.sendMessage("§eDas Item " + itemName + " wurde geblacklistet. Du hast ein neues Item zugewiesen bekommen!");
+                    player.sendMessage(messages.getString("item-blacklisted-reassigned", "§eDas Item %item% wurde geblacklistet. Du hast ein neues Item zugewiesen bekommen!").replace("%item%", itemName));
                 }
             }
             
