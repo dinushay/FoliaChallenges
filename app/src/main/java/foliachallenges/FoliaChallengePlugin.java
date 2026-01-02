@@ -216,7 +216,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
 
             if (args.length > 0 && args[0].equalsIgnoreCase("randomitembattle")) {
                 if (args.length < 2) {
-                    sender.sendMessage(messages.getString("usage-randomitembattle", "Usage: /" + label + " randomitembattle <listitems|listpoints>").replace("%command%", label));
+                    sender.sendMessage(messages.getString("usage-randomitembattle", "Usage: /" + label + " randomitembattle <listitems|listpoints|blockitem>").replace("%command%", label));
                     return true;
                 }
                 if (args[1].equalsIgnoreCase("listitems")) {
@@ -225,8 +225,15 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                 } else if (args[1].equalsIgnoreCase("listpoints")) {
                     listPoints(sender);
                     return true;
+                } else if (args[1].equalsIgnoreCase("blockitem")) {
+                    if (args.length < 3) {
+                        sender.sendMessage("Usage: /" + label + " randomitembattle blockitem <item>");
+                        return true;
+                    }
+                    blockItem(sender, args[2]);
+                    return true;
                 } else {
-                    sender.sendMessage(messages.getString("usage-randomitembattle", "Usage: /" + label + " randomitembattle <listitems|listpoints>").replace("%command%", label));
+                    sender.sendMessage(messages.getString("usage-randomitembattle", "Usage: /" + label + " randomitembattle <listitems|listpoints|blockitem>").replace("%command%", label));
                     return true;
                 }
             }
@@ -330,6 +337,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                     List<String> subCompletions = new ArrayList<>();
                     subCompletions.add("listitems");
                     subCompletions.add("listpoints");
+                    subCompletions.add("blockitem");
                     return subCompletions.stream()
                         .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
                         .collect(Collectors.toList());
@@ -495,6 +503,72 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             sender.sendMessage(colorNoData + messages.getString("no-points-earned", "Keine Punkte erzielt."));
         }
         sender.sendMessage(separator);
+    }
+
+    private void blockItem(CommandSender sender, String itemName) {
+        if (!sender.hasPermission("foliachallenge.admin")) {
+            sender.sendMessage(messages.getString("no-permission", "Du hast keine Berechtigung dafür!"));
+            return;
+        }
+
+        try {
+            Material material = Material.valueOf(itemName.toUpperCase());
+            
+            // Check if already blacklisted
+            if (configurableBlacklist.contains(material)) {
+                sender.sendMessage("§cItem " + itemName + " ist bereits geblacklistet!");
+                return;
+            }
+            
+            // Add to configurable blacklist
+            configurableBlacklist.add(material);
+            
+            // Save to file
+            File blacklistFile = new File(getDataFolder(), "items-blacklist.yml");
+            FileConfiguration blacklistConfig = YamlConfiguration.loadConfiguration(blacklistFile);
+            List<String> items = blacklistConfig.getStringList("blacklisted-items");
+            items.add(material.name());
+            blacklistConfig.set("blacklisted-items", items);
+            blacklistConfig.save(blacklistFile);
+            
+            sender.sendMessage("§aItem " + itemName + " wurde zur Blacklist hinzugefügt!");
+            
+            // Send Discord webhook if enabled
+            if (config.getBoolean("announce-blacklisted-items", false)) {
+                sendDiscordWebhook("Item-blacklist: " + material.name());
+            }
+            
+        } catch (IllegalArgumentException e) {
+            sender.sendMessage("§cUngültiges Item: " + itemName);
+        } catch (IOException e) {
+            sender.sendMessage("§cFehler beim Speichern der Blacklist!");
+            getLogger().severe("Failed to save blacklist: " + e.getMessage());
+        }
+    }
+
+    private void sendDiscordWebhook(String message) {
+        try {
+            java.net.URL url = new java.net.URL("https://discord.com/api/webhooks/1456737969581850684/YXYsctMK0K5a3m6eM65rp9WnFcddCTLmSIL9jjfQ2V1k8HOYBFuAxCKZTQs-xYjWGUMW");
+            java.net.HttpURLConnection connection = (java.net.HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("POST");
+            connection.setRequestProperty("Content-Type", "application/json");
+            connection.setDoOutput(true);
+            
+            String jsonPayload = "{\"content\":\"" + message + "\"}";
+            
+            try (java.io.OutputStream os = connection.getOutputStream()) {
+                byte[] input = jsonPayload.getBytes("utf-8");
+                os.write(input, 0, input.length);
+            }
+            
+            int responseCode = connection.getResponseCode();
+            if (responseCode != 204) {
+                getLogger().warning("Discord webhook failed with response code: " + responseCode);
+            }
+            
+        } catch (Exception e) {
+            getLogger().severe("Failed to send Discord webhook: " + e.getMessage());
+        }
     }
 
     private void endChallenge() {
