@@ -821,6 +821,11 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
         removeItemDisplay(player);
+        // Persist assigned item for rejoin
+        Material item = assignedItems.get(player);
+        if (item != null) {
+            persistedAssigned.put(player.getUniqueId(), item);
+        }
         assignedItems.remove(player);
         scores.remove(player);
     }
