@@ -127,7 +127,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     }
 
     private BossBar createBossBar(Player player) {
-        BossBar bar = getServer().createBossBar("Aktuelles Item: -", BarColor.BLUE, BarStyle.SOLID);
+        BossBar bar = getServer().createBossBar(messages.getString("bossbar-default", "Aktuelles Item: -"), BarColor.BLUE, BarStyle.SOLID);
         bar.addPlayer(player);
         bossBars.put(player, bar);
         return bar;
@@ -139,9 +139,9 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             Material item = assignedItems.get(player);
             if (item != null) {
                 String itemName = formatItemName(item.name());
-                bar.setTitle("Aktuelles Item: " + itemName);
+                bar.setTitle(messages.getString("bossbar-item", "Aktuelles Item: %item%").replace("%item%", itemName));
             } else {
-                bar.setTitle("Timer pausiert");
+                bar.setTitle(messages.getString("bossbar-paused", "Timer pausiert"));
             }
         }
     }
@@ -216,7 +216,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
 
             if (args.length > 0 && args[0].equalsIgnoreCase("randomitembattle")) {
                 if (args.length < 2) {
-                    sender.sendMessage("Usage: /" + label + " randomitembattle <listitems|listpoints>");
+                    sender.sendMessage(messages.getString("usage-randomitembattle", "Usage: /" + label + " randomitembattle <listitems|listpoints>").replace("%command%", label));
                     return true;
                 }
                 if (args[1].equalsIgnoreCase("listitems")) {
@@ -226,7 +226,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                     listPoints(sender);
                     return true;
                 } else {
-                    sender.sendMessage("Usage: /" + label + " randomitembattle <listitems|listpoints>");
+                    sender.sendMessage(messages.getString("usage-randomitembattle", "Usage: /" + label + " randomitembattle <listitems|listpoints>").replace("%command%", label));
                     return true;
                 }
             }
@@ -236,7 +236,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                 if (command.getName().equalsIgnoreCase("start")) {
                     startTimer(sender);
                 } else {
-                    sender.sendMessage(messages.getString("usage-timer", "Usage: /challenges <start|stop|setcountdown|resume|randomitembattle> [minutes]"));
+                    sender.sendMessage(messages.getString("usage-challenges", "Usage: /challenges <start|stop|setcountdown|resume|randomitembattle> [minutes]"));
                 }
                 return true;
             }
@@ -252,7 +252,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                     break;
                 case "setcountdown":
                     if (args.length < 2) {
-                        sender.sendMessage(messages.getString("usage-timer-set", "Usage: /challenges setcountdown <minutes>"));
+                        sender.sendMessage(messages.getString("usage-challenges-set", "Usage: /challenges setcountdown <minutes>"));
                         return true;
                     }
                     try {
@@ -263,7 +263,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                     }
                     break;
                 default:
-                    sender.sendMessage(messages.getString("usage-timer", "Usage: /challenges <start|stop|setcountdown|resume|randomitembattle> [minutes]"));
+                    sender.sendMessage(messages.getString("usage-challenges", "Usage: /challenges <start|stop|setcountdown|resume|randomitembattle> [minutes]"));
                     break;
             }
             return true;
@@ -481,12 +481,13 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         String colorNoData = messages.getString("color-no-data", "§7");
         String separator = messages.getString("color-separator", "§6§l===================");
         
+        String pointsSuffix = messages.getString("points-suffix", "Punkte");
         sender.sendMessage(colorTitle + messages.getString("player-points-title", "=== Player Points ==="));
         boolean hasPoints = false;
         for (Player p : getServer().getOnlinePlayers()) {
             int points = scores.getOrDefault(p, 0);
             if (points > 0) {
-                sender.sendMessage(colorPlayer + p.getName() + " " + colorSeparator + points + " Punkte");
+                sender.sendMessage(colorPlayer + p.getName() + " " + colorSeparator + points + " " + pointsSuffix);
                 hasPoints = true;
             }
         }
@@ -509,6 +510,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             .sorted(Map.Entry.<Player, Integer>comparingByValue().reversed())
             .collect(Collectors.toList());
 
+        String pointsSuffix = messages.getString("points-suffix", "Punkte");
         // Send leaderboard to all players
         getServer().broadcastMessage(colorTitle + messages.getString("leaderboard-title", "=== Challenge Ergebnisse ==="));
         int rank = 1;
@@ -519,8 +521,9 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             String entry = messages.getString("leaderboard-entry", "#%rank% %player% - %points% Punkte");
             entry = entry.replace("%rank%", String.valueOf(rank))
                         .replace("%player%", sortedScores.get(i).getKey().getName())
-                        .replace("%points%", String.valueOf(sortedScores.get(i).getValue()));
-            getServer().broadcastMessage(colorRank + "#" + rank + " " + colorPlayer + sortedScores.get(i).getKey().getName() + " " + colorSeparator + sortedScores.get(i).getValue() + " Punkte");
+                        .replace("%points%", String.valueOf(sortedScores.get(i).getValue()))
+                        .replace("Punkte", pointsSuffix);
+            getServer().broadcastMessage(colorRank + "#" + rank + " " + colorPlayer + sortedScores.get(i).getKey().getName() + " " + colorSeparator + sortedScores.get(i).getValue() + " " + pointsSuffix);
         }
         if (sortedScores.isEmpty()) {
             getServer().broadcastMessage(colorNoData + messages.getString("no-points-earned", "Keine Punkte erzielt."));
