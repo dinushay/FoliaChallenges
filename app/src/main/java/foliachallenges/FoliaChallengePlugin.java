@@ -96,6 +96,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         for (Player p : getServer().getOnlinePlayers()) {
             removeItemDisplay(p);
         }
+        itemDisplays.clear(); // Clear the map as well
         if (actionBarTask != null) {
             actionBarTask.cancel();
         }
@@ -636,6 +637,11 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     }
 
     private void endChallenge() {
+        // Remove all floating item displays immediately
+        for (Player p : getServer().getOnlinePlayers()) {
+            removeItemDisplay(p);
+        }
+        
         String colorTitle = messages.getString("color-title", "§6§l");
         String colorRank = messages.getString("color-rank", "§e");
         String colorPlayer = messages.getString("color-player", "§f");
@@ -661,7 +667,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                         .replace("%player%", sortedScores.get(i).getKey().getName())
                         .replace("%points%", String.valueOf(sortedScores.get(i).getValue()))
                         .replace("Punkte", pointsSuffix);
-            getServer().broadcastMessage(colorRank + "#" + rank + " " + colorPlayer + sortedScores.get(i).getKey().getName() + " " + colorSeparator + sortedScores.get(i).getValue() + " " + pointsSuffix);
+            getServer().broadcastMessage(colorRank + entry);
         }
         if (sortedScores.isEmpty()) {
             getServer().broadcastMessage(colorNoData + messages.getString("no-points-earned", "Keine Punkte erzielt."));
@@ -676,10 +682,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         // Clear scores and items
         scores.clear();
         assignedItems.clear();
-        // Remove all floating item displays
-        for (Player p : getServer().getOnlinePlayers()) {
-            removeItemDisplay(p);
-        }
+        itemDisplays.clear(); // Also clear the item displays map
         for (Player p : getServer().getOnlinePlayers()) {
             updateBossBar(p);
         }
