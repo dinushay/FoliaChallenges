@@ -8,6 +8,10 @@ folia-supported: true
 commands:
   challenge:
     description: Manage the challenge timer
+  timer:
+    description: Manage the challenge timer (alias for /challenge)
+  resume:
+    description: Resume the challenge timer
     usage: /<command> <start|stop|setcountdown|resume> [minutes]
   start:
     description: Start the timer

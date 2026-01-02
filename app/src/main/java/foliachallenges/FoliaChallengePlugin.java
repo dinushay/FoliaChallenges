@@ -187,12 +187,38 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (command.getName().equalsIgnoreCase("challenge") || command.getName().equalsIgnoreCase("start")) {
+        if (command.getName().equalsIgnoreCase("resume")) {
+            if (!sender.hasPermission("foliachallenge.timer")) {
+                sender.sendMessage(messages.getString("no-permission", "Du hast keine Berechtigung dafür!"));
+                return true;
+            }
+            resumeTimer(sender);
+            return true;
+        }
+        if (command.getName().equalsIgnoreCase("challenge") || command.getName().equalsIgnoreCase("start") || command.getName().equalsIgnoreCase("timer")) {
             if (!sender.hasPermission("foliachallenge.timer")) {
                 sender.sendMessage(messages.getString("no-permission", "Du hast keine Berechtigung dafür!"));
                 return true;
             }
 
+            if (args.length > 0 && args[0].equalsIgnoreCase("randomitembattle")) {
+                if (args.length < 2) {
+                    sender.sendMessage("Usage: /" + label + " randomitembattle <listitems|listpoints>");
+                    return true;
+                }
+                if (args[1].equalsIgnoreCase("listitems")) {
+                    listItems(sender);
+                    return true;
+                } else if (args[1].equalsIgnoreCase("listpoints")) {
+                    listPoints(sender);
+                    return true;
+                } else {
+                    sender.sendMessage("Usage: /" + label + " randomitembattle <listitems|listpoints>");
+                    return true;
+                }
+            }
+
+            // Existing timer commands
             if (args.length == 0) {
                 if (command.getName().equalsIgnoreCase("start")) {
                     startTimer(sender);
@@ -301,6 +327,30 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener {
         updateActionBar();
     }
 
+    private void resumeTimer(CommandSender sender) {
+        if (!timerSet) {
+            sender.sendMessage(messages.getString("timer-not-set-message", "Timer nicht gesetzt!"));
+            return;
+        }
+        if (remainingSeconds == 0) {
+            sender.sendMessage(messages.getString("timer-expired", "Timer ist abgelaufen! Setze neue Zeit mit /challenge setcountdown <minuten>."));
+            return;
+        }
+        if (timerRunning) {
+            sender.sendMessage(messages.getString("timer-already-running", "Timer läuft bereits!"));
+            return;
+        }
+        timerRunning = true;
+        scheduler.run(this, task -> pauseWorlds());
+        // Do not reassign items, just resume
+        // Play start sound
+        for (Player p : getServer().getOnlinePlayers()) {
+            p.playSound(p.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+        }
+        sender.sendMessage(messages.getString("timer-resumed", "Timer fortgesetzt!"));
+        startTimerTask();
+    }
+
     private void startTimerTask() {
         GlobalRegionScheduler scheduler = getServer().getGlobalRegionScheduler();
         timerTask = scheduler.runAtFixedRate(this, task -> {
@@ -315,6 +365,31 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener {
                 task.cancel();
             }
         }, 1, 20); // Every second
+    }
+
+    private void listItems(CommandSender sender) {
+        sender.sendMessage("§6§l=== Assigned Items ===");
+        for (Player p : getServer().getOnlinePlayers()) {
+            Material item = assignedItems.get(p);
+            String itemName = item != null ? formatItemName(item.name()) : "Kein Item";
+            sender.sendMessage("§f" + p.getName() + " §7- §a" + itemName);
+        }
+        if (assignedItems.isEmpty()) {
+            sender.sendMessage("§7Keine Items zugewiesen.");
+        }
+        sender.sendMessage("§6§l===================");
+    }
+
+    private void listPoints(CommandSender sender) {
+        sender.sendMessage("§6§l=== Player Points ===");
+        for (Player p : getServer().getOnlinePlayers()) {
+            int points = scores.getOrDefault(p, 0);
+            sender.sendMessage("§f" + p.getName() + " §7- §a" + points + " Punkte");
+        }
+        if (scores.isEmpty()) {
+            sender.sendMessage("§7Keine Punkte erzielt.");
+        }
+        sender.sendMessage("§6§l===================");
     }
 
     private void endChallenge() {
