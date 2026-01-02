@@ -623,8 +623,8 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             message = messages.getString("timer-not-set", "• Zeit wurde nicht gesetzt •");
         } else {
             String timeStr = formatTime(remainingSeconds);
-            String color = timerRunning ? "§a" : "§c"; // Green if running, red if paused
-            message = messages.getString("timer-display", "• Zeit: %time% •").replace("%time%", color + timeStr);
+            String color = timerRunning ? messages.getString("color-timer-running", "§a") : messages.getString("color-timer-paused", "§c");
+            message = messages.getString("timer-display", "• Zeit: %time% •").replace("%time%", color + timeStr + "§f");
         }
         for (Player player : Bukkit.getOnlinePlayers()) {
             player.sendActionBar(message);
@@ -637,8 +637,8 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             message = messages.getString("timer-not-set", "• Zeit wurde nicht gesetzt •");
         } else {
             String timeStr = formatTime(remainingSeconds);
-            String color = timerRunning ? "§a" : "§c"; // Green if running, red if paused
-            message = messages.getString("timer-display", "• Zeit: %time% •").replace("%time%", color + timeStr);
+            String color = timerRunning ? messages.getString("color-timer-running", "§a") : messages.getString("color-timer-paused", "§c");
+            message = messages.getString("timer-display", "• Zeit: %time% •").replace("%time%", color + timeStr + "§f");
         }
         player.sendActionBar(message);
     }
