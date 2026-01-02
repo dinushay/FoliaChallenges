@@ -249,6 +249,10 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener {
             sender.sendMessage(messages.getString("timer-not-set-message", "Timer nicht gesetzt!"));
             return;
         }
+        if (remainingSeconds == 0) {
+            sender.sendMessage(messages.getString("timer-expired", "Timer ist abgelaufen! Setze neue Zeit mit /challenge setcountdown <minuten>."));
+            return;
+        }
         if (timerRunning) {
             sender.sendMessage(messages.getString("timer-already-running", "Timer läuft bereits!"));
             return;
@@ -261,6 +265,10 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener {
                 assignRandomItem(p);
                 updateBossBar(p);
             }
+        }
+        // Play start sound
+        for (Player p : getServer().getOnlinePlayers()) {
+            p.playSound(p.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
         }
         sender.sendMessage(messages.getString("timer-started", "Timer gestartet!"));
         startTimerTask();
@@ -328,6 +336,11 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener {
             getServer().broadcastMessage("§7Keine Punkte erzielt.");
         }
         getServer().broadcastMessage("§6§l========================");
+
+        // Play end sound
+        for (Player p : getServer().getOnlinePlayers()) {
+            p.playSound(p.getLocation(), org.bukkit.Sound.ENTITY_FIREWORK_ROCKET_BLAST, 1.0f, 1.0f);
+        }
 
         // Clear scores and items
         scores.clear();
