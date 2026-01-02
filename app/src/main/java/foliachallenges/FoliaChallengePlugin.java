@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class FoliaChallengePlugin extends JavaPlugin implements Listener {
 
@@ -301,10 +302,39 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener {
             } else {
                 timerRunning = false;
                 scheduler.run(this, t -> pauseWorlds());
+                endChallenge();
                 updateActionBar();
                 task.cancel();
             }
         }, 1, 20); // Every second
+    }
+
+    private void endChallenge() {
+        // Sort scores descending
+        List<Map.Entry<Player, Integer>> sortedScores = scores.entrySet().stream()
+            .sorted(Map.Entry.<Player, Integer>comparingByValue().reversed())
+            .collect(Collectors.toList());
+
+        // Send leaderboard to all players
+        for (Player player : getServer().getOnlinePlayers()) {
+            player.sendMessage("§6§l=== Challenge Ergebnisse ===");
+            int rank = 1;
+            for (Map.Entry<Player, Integer> entry : sortedScores) {
+                player.sendMessage("§e#" + rank + " §f" + entry.getKey().getName() + " §7- §a" + entry.getValue() + " Punkte");
+                rank++;
+            }
+            if (sortedScores.isEmpty()) {
+                player.sendMessage("§7Keine Punkte erzielt.");
+            }
+            player.sendMessage("§6§l========================");
+        }
+
+        // Clear scores and items
+        scores.clear();
+        assignedItems.clear();
+        for (Player p : getServer().getOnlinePlayers()) {
+            updateBossBar(p);
+        }
     }
 
     private void updateActionBar() {
