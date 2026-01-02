@@ -1,6 +1,6 @@
 plugins {
-    // Apply the application plugin to add support for building a CLI application in Java.
-    application
+    // Apply the java plugin for building Java projects
+    java
 }
 
 repositories {
@@ -15,7 +15,7 @@ dependencies {
 
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
-    // This dependency is used by the application.
+    // This dependency is used by the plugin.
     implementation(libs.guava)
 
     // Paper API for Minecraft plugin development
@@ -27,11 +27,6 @@ java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
     }
-}
-
-application {
-    // Define the main class for the application.
-    mainClass = "foliachallenges.App"
 }
 
 tasks.jar {
