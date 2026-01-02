@@ -114,20 +114,9 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener {
 
     private BossBar createBossBar(Player player) {
         BossBar bar = getServer().createBossBar("Aktuelles Item: -", BarColor.BLUE, BarStyle.SOLID);
+        bar.addPlayer(player);
         bossBars.put(player, bar);
-        updateBossBarVisibility(player);
         return bar;
-    }
-
-    private void updateBossBarVisibility(Player player) {
-        BossBar bar = bossBars.get(player);
-        if (bar != null) {
-            if (player.getGameMode() == GameMode.SURVIVAL) {
-                bar.addPlayer(player);
-            } else {
-                bar.removePlayer(player);
-            }
-        }
     }
 
     private void updateBossBar(Player player) {
@@ -271,7 +260,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener {
                 assignRandomItem(p);
                 updateBossBar(p);
             }
-            updateBossBarVisibility(p);
         }
         sender.sendMessage(messages.getString("timer-started", "Timer gestartet!"));
         startTimerTask();
@@ -290,7 +278,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener {
         // Update boss bars
         for (Player p : getServer().getOnlinePlayers()) {
             updateBossBar(p);
-            updateBossBarVisibility(p);
         }
         sender.sendMessage(messages.getString("timer-stopped", "Timer gestoppt!"));
         updateActionBar();
@@ -426,10 +413,5 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener {
             assignRandomItem(player);
             updateBossBar(player);
         }
-    }
-
-    @EventHandler
-    public void onPlayerGameModeChange(PlayerGameModeChangeEvent event) {
-        updateBossBarVisibility(event.getPlayer());
     }
 }
