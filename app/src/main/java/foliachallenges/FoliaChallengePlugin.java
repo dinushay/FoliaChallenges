@@ -39,6 +39,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -52,6 +53,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     private boolean timerSet = false;
     private ScheduledTask actionBarTask;
     private ScheduledTask timerTask;
+    private ScheduledTask saveTask;
     private GlobalRegionScheduler scheduler;
     private List<Material> configurableBlacklist = new ArrayList<>();
     private List<Material> hardcodedBlacklist = Arrays.asList(Material.AIR);
@@ -59,6 +61,9 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     private Map<Player, Integer> scores = new HashMap<>();
     private Map<Player, BossBar> bossBars = new HashMap<>();
     private Map<Player, org.bukkit.entity.ArmorStand> itemDisplays = new HashMap<>();
+    // Persisted maps keyed by UUID for restoring after restart
+    private Map<UUID, Material> persistedAssigned = new HashMap<>();
+    private Map<UUID, Integer> persistedScores = new HashMap<>();
 
     @Override
     public void onEnable() {
@@ -88,6 +93,10 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         scheduler.run(this, task -> pauseWorlds());
         // Start action bar update task
         actionBarTask = scheduler.runAtFixedRate(this, task -> updateActionBar(), 1, 10); // Update every 0.5 seconds
+        // Start periodic save task (every 5 seconds)
+        saveTask = scheduler.runAtFixedRate(this, task -> saveData(), 5, 100); // initial delay 5 ticks, repeat 100 ticks (~5s)
+        // Load persisted data (if any)
+        loadData();
     }
 
     @Override
@@ -103,6 +112,11 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         if (timerTask != null) {
             timerTask.cancel();
         }
+        if (saveTask != null) {
+            saveTask.cancel();
+        }
+        // Final save
+        saveData();
         getLogger().info("FoliaChallenge disabled!");
     }
 
@@ -134,6 +148,8 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             createItemDisplay(player, random);
             // Update boss bar with new item
             updateBossBar(player);
+            // Persist change
+            saveData();
         }
     }
 
@@ -472,6 +488,8 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             if (remainingSeconds > 0) {
                 remainingSeconds--;
                 updateActionBar();
+                // Save remaining time frequently
+                saveData();
             } else {
                 timerRunning = false;
                 scheduler.run(this, t -> {
@@ -557,6 +575,9 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                 if (assignedItems.get(player) == material) {
                     assignRandomItem(player);
                     player.sendMessage(messages.getString("item-blacklisted-reassigned", "§eDas Item %item% wurde geblacklistet. Du hast ein neues Item zugewiesen bekommen!").replace("%item%", itemName));
+                    // Ensure bossbar reflects new item and save
+                    updateBossBar(player);
+                    saveData();
                 }
             }
             
@@ -699,7 +720,16 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
         createBossBar(player);
-        if (timerRunning && player.getGameMode() == GameMode.SURVIVAL) {
+        // Restore persisted score/assignment if present
+        UUID uuid = player.getUniqueId();
+        if (persistedScores.containsKey(uuid)) {
+            scores.put(player, persistedScores.get(uuid));
+        }
+        if (persistedAssigned.containsKey(uuid) && player.getGameMode() == GameMode.SURVIVAL) {
+            Material mat = persistedAssigned.remove(uuid);
+            assignedItems.put(player, mat);
+            createItemDisplay(player, mat);
+        } else if (timerRunning && player.getGameMode() == GameMode.SURVIVAL) {
             assignRandomItem(player);
         }
         updateBossBar(player);
@@ -793,5 +823,97 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         removeItemDisplay(player);
         assignedItems.remove(player);
         scores.remove(player);
+    }
+
+    // Persist current runtime state to data.yml
+    private void saveData() {
+        try {
+            File dataFile = new File(getDataFolder(), "data.yml");
+            FileConfiguration data = new YamlConfiguration();
+            data.set("remainingSeconds", remainingSeconds);
+            data.set("timerRunning", timerRunning);
+            // Save scores by UUID
+            Map<String, Object> scoresMap = new HashMap<>();
+            for (Map.Entry<Player, Integer> e : scores.entrySet()) {
+                scoresMap.put(e.getKey().getUniqueId().toString(), e.getValue());
+            }
+            data.set("scores", scoresMap);
+            // Save assigned items by UUID
+            Map<String, Object> assignMap = new HashMap<>();
+            for (Map.Entry<Player, Material> e : assignedItems.entrySet()) {
+                assignMap.put(e.getKey().getUniqueId().toString(), e.getValue().name());
+            }
+            // Also include persistedAssigned entries for offline players
+            for (Map.Entry<UUID, Material> e : persistedAssigned.entrySet()) {
+                assignMap.put(e.getKey().toString(), e.getValue().name());
+            }
+            data.set("assignedItems", assignMap);
+            data.save(dataFile);
+        } catch (IOException ex) {
+            getLogger().severe("Failed to save data.yml: " + ex.getMessage());
+        }
+    }
+
+    // Load persisted runtime state from data.yml
+    private void loadData() {
+        try {
+            File dataFile = new File(getDataFolder(), "data.yml");
+            if (!dataFile.exists()) return;
+            FileConfiguration data = YamlConfiguration.loadConfiguration(dataFile);
+            remainingSeconds = data.getLong("remainingSeconds", remainingSeconds);
+            timerRunning = data.getBoolean("timerRunning", false);
+            // Load scores
+            if (data.contains("scores")) {
+                Object obj = data.get("scores");
+                if (obj instanceof Map) {
+                    Map<?, ?> m = (Map<?, ?>) obj;
+                    for (Map.Entry<?, ?> e : m.entrySet()) {
+                        try {
+                            UUID id = UUID.fromString(e.getKey().toString());
+                            int pts = Integer.parseInt(e.getValue().toString());
+                            persistedScores.put(id, pts);
+                            Player p = Bukkit.getPlayer(id);
+                            if (p != null && p.isOnline()) {
+                                scores.put(p, pts);
+                            }
+                        } catch (Exception ex) {
+                            // ignore malformed entries
+                        }
+                    }
+                }
+            }
+            // Load assigned items
+            if (data.contains("assignedItems")) {
+                Object obj = data.get("assignedItems");
+                if (obj instanceof Map) {
+                    Map<?, ?> m = (Map<?, ?>) obj;
+                    for (Map.Entry<?, ?> e : m.entrySet()) {
+                        try {
+                            UUID id = UUID.fromString(e.getKey().toString());
+                            String matName = e.getValue().toString();
+                            Material mat = Material.valueOf(matName);
+                            Player p = Bukkit.getPlayer(id);
+                            if (p != null && p.isOnline()) {
+                                assignedItems.put(p, mat);
+                                createItemDisplay(p, mat);
+                                updateBossBar(p);
+                            } else {
+                                persistedAssigned.put(id, mat);
+                            }
+                        } catch (Exception ex) {
+                            // ignore malformed entries
+                        }
+                    }
+                }
+            }
+            // If timer was running when saved, resume scheduling
+            if (timerRunning && remainingSeconds > 0) {
+                // Ensure worlds are paused and start task
+                scheduler.run(this, t -> pauseWorlds());
+                startTimerTask();
+            }
+        } catch (Exception e) {
+            getLogger().severe("Failed to load data.yml: " + e.getMessage());
+        }
     }
 }
