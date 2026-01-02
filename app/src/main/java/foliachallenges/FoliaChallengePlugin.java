@@ -384,6 +384,14 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                         .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
                         .collect(Collectors.toList());
                 }
+            } else if (args.length == 3 && args[0].equalsIgnoreCase("randomitembattle") && args[1].equalsIgnoreCase("blockitem")) {
+                // Suggest all Minecraft materials for blockitem command
+                return Arrays.stream(Material.values())
+                    .filter(Material::isItem)
+                    .map(Material::name)
+                    .map(String::toLowerCase)
+                    .filter(name -> name.startsWith(args[2].toLowerCase()))
+                    .collect(Collectors.toList());
             }
         } else if (cmdName.equals("timer")) {
             if (args.length == 1) {
@@ -570,6 +578,14 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             
             // Add to configurable blacklist
             configurableBlacklist.add(material);
+            
+            // Reassign item to players who currently have this item
+            for (Player player : getServer().getOnlinePlayers()) {
+                if (assignedItems.get(player) == material) {
+                    assignRandomItem(player);
+                    player.sendMessage("§eDas Item " + itemName + " wurde geblacklistet. Du hast ein neues Item zugewiesen bekommen!");
+                }
+            }
             
             // Save to file
             File blacklistFile = new File(getDataFolder(), "items-blacklist.yml");
