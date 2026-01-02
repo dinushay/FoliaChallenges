@@ -253,7 +253,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             resumeTimer(sender);
             return true;
         }
-        if (command.getName().equalsIgnoreCase("challenges") || command.getName().equalsIgnoreCase("start")) {
+        if (command.getName().equalsIgnoreCase("challenges")) {
             if (!sender.hasPermission("foliachallenge.timer")) {
                 sender.sendMessage(messages.getString("no-permission", "Du hast keine Berechtigung dafür!"));
                 return true;
@@ -283,40 +283,10 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                 }
             }
 
-            // Existing timer commands
+            // Only randomitembattle is supported under /challenges now
             if (args.length == 0) {
-                if (command.getName().equalsIgnoreCase("start")) {
-                    startTimer(sender);
-                } else {
-                    sender.sendMessage(messages.getString("usage-challenges", "Usage: /challenges <start|stop|setcountdown|resume|randomitembattle> [minutes]"));
-                }
+                sender.sendMessage(messages.getString("usage-randomitembattle", "Usage: /" + label + " randomitembattle <listitems|listpoints|blockitem>").replace("%command%", label));
                 return true;
-            }
-
-            String subCommand = args[0].toLowerCase();
-            switch (subCommand) {
-                case "start":
-                case "resume":
-                    startTimer(sender);
-                    break;
-                case "stop":
-                    stopTimer(sender);
-                    break;
-                case "setcountdown":
-                    if (args.length < 2) {
-                        sender.sendMessage(messages.getString("usage-challenges-set", "Usage: /challenges setcountdown <minutes>"));
-                        return true;
-                    }
-                    try {
-                        int minutes = Integer.parseInt(args[1]);
-                        setTimer(sender, minutes);
-                    } catch (NumberFormatException e) {
-                        sender.sendMessage(messages.getString("invalid-minutes", "Ungültige Minutenanzahl!"));
-                    }
-                    break;
-                default:
-                    sender.sendMessage(messages.getString("usage-challenges", "Usage: /challenges <start|stop|setcountdown|resume|randomitembattle> [minutes]"));
-                    break;
             }
             return true;
         }
@@ -367,18 +337,12 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         if (cmdName.equals("challenges")) {
             if (args.length == 1) {
                 List<String> completions = new ArrayList<>();
-                completions.add("start");
-                completions.add("stop");
-                completions.add("setcountdown");
-                completions.add("resume");
                 completions.add("randomitembattle");
                 return completions.stream()
                     .filter(s -> s.toLowerCase().startsWith(args[0].toLowerCase()))
                     .collect(Collectors.toList());
             } else if (args.length == 2) {
-                if (args[0].equalsIgnoreCase("setcountdown")) {
-                    return Collections.emptyList(); // No suggestions for minutes
-                } else if (args[0].equalsIgnoreCase("randomitembattle")) {
+                if (args[0].equalsIgnoreCase("randomitembattle")) {
                     List<String> subCompletions = new ArrayList<>();
                     subCompletions.add("listitems");
                     subCompletions.add("listpoints");
