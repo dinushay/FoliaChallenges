@@ -389,6 +389,8 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             p.playSound(p.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
         }
         sender.sendMessage(messages.getString("timer-started", "Timer gestartet!"));
+        // Broadcast timer started message to all players
+        getServer().broadcastMessage(messages.getString("timer-started-global", "§aDer Challenge-Timer wurde gestartet!"));
         startTimerTask();
     }
 
@@ -620,7 +622,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     private void updateActionBar() {
         String message;
         if (!timerSet) {
-            message = messages.getString("timer-not-set", "• Zeit wurde nicht gesetzt •");
+            message = messages.getString("color-timer-not-set", "§e") + messages.getString("timer-not-set", "• Zeit wurde nicht gesetzt •");
         } else {
             String timeStr = formatTime(remainingSeconds);
             String color = timerRunning ? messages.getString("color-timer-running", "§a") : messages.getString("color-timer-paused", "§c");
@@ -634,7 +636,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     private void updateActionBarForPlayer(Player player) {
         String message;
         if (!timerSet) {
-            message = messages.getString("timer-not-set", "• Zeit wurde nicht gesetzt •");
+            message = messages.getString("color-timer-not-set", "§e") + messages.getString("timer-not-set", "• Zeit wurde nicht gesetzt •");
         } else {
             String timeStr = formatTime(remainingSeconds);
             String color = timerRunning ? messages.getString("color-timer-running", "§a") : messages.getString("color-timer-paused", "§c");
@@ -724,6 +726,8 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             updateBossBar(player);
             // Play item found sound
             player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+            // Send personal message to player
+            player.sendMessage(messages.getString("item-found", "§aDu hast dein Item gefunden! Neues Item zugewiesen."));
         }
     }
 
