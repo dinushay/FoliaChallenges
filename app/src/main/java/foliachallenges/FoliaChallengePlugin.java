@@ -452,57 +452,80 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     }
 
     private void listItems(CommandSender sender) {
-        sender.sendMessage("§6§l" + messages.getString("assigned-items-title", "=== Assigned Items ==="));
+        String colorTitle = messages.getString("color-title", "§6§l");
+        String colorPlayer = messages.getString("color-player", "§f");
+        String colorSeparator = messages.getString("color-separator-small", "§7- §a");
+        String colorNoData = messages.getString("color-no-data", "§7");
+        String separator = messages.getString("color-separator", "§6§l===================");
+        
+        sender.sendMessage(colorTitle + messages.getString("assigned-items-title", "=== Assigned Items ==="));
         boolean hasItems = false;
         for (Player p : getServer().getOnlinePlayers()) {
             Material item = assignedItems.get(p);
             if (item != null) {
                 String itemName = formatItemName(item.name());
-                sender.sendMessage("§f" + p.getName() + " §7- §a" + itemName);
+                sender.sendMessage(colorPlayer + p.getName() + " " + colorSeparator + itemName);
                 hasItems = true;
             }
         }
         if (!hasItems) {
-            sender.sendMessage("§7" + messages.getString("no-items-assigned", "Keine Items zugewiesen."));
+            sender.sendMessage(colorNoData + messages.getString("no-items-assigned", "Keine Items zugewiesen."));
         }
-        sender.sendMessage("§6§l===================");
+        sender.sendMessage(separator);
     }
 
     private void listPoints(CommandSender sender) {
-        sender.sendMessage("§6§l" + messages.getString("player-points-title", "=== Player Points ==="));
+        String colorTitle = messages.getString("color-title", "§6§l");
+        String colorPlayer = messages.getString("color-player", "§f");
+        String colorSeparator = messages.getString("color-separator-small", "§7- §a");
+        String colorNoData = messages.getString("color-no-data", "§7");
+        String separator = messages.getString("color-separator", "§6§l===================");
+        
+        sender.sendMessage(colorTitle + messages.getString("player-points-title", "=== Player Points ==="));
         boolean hasPoints = false;
         for (Player p : getServer().getOnlinePlayers()) {
             int points = scores.getOrDefault(p, 0);
             if (points > 0) {
-                sender.sendMessage("§f" + p.getName() + " §7- §a" + points + " Punkte");
+                sender.sendMessage(colorPlayer + p.getName() + " " + colorSeparator + points + " Punkte");
                 hasPoints = true;
             }
         }
         if (!hasPoints) {
-            sender.sendMessage("§7" + messages.getString("no-points-earned", "Keine Punkte erzielt."));
+            sender.sendMessage(colorNoData + messages.getString("no-points-earned", "Keine Punkte erzielt."));
         }
-        sender.sendMessage("§6§l===================");
+        sender.sendMessage(separator);
     }
 
     private void endChallenge() {
+        String colorTitle = messages.getString("color-title", "§6§l");
+        String colorRank = messages.getString("color-rank", "§e");
+        String colorPlayer = messages.getString("color-player", "§f");
+        String colorSeparator = messages.getString("color-separator-small", "§7- §a");
+        String colorNoData = messages.getString("color-no-data", "§7");
+        String separator = messages.getString("color-separator", "§6§l========================");
+        
         // Sort scores descending
         List<Map.Entry<Player, Integer>> sortedScores = scores.entrySet().stream()
             .sorted(Map.Entry.<Player, Integer>comparingByValue().reversed())
             .collect(Collectors.toList());
 
         // Send leaderboard to all players
-        getServer().broadcastMessage("§6§l=== Challenge Ergebnisse ===");
+        getServer().broadcastMessage(colorTitle + messages.getString("leaderboard-title", "=== Challenge Ergebnisse ==="));
         int rank = 1;
         for (int i = 0; i < sortedScores.size(); i++) {
             if (i > 0 && !sortedScores.get(i).getValue().equals(sortedScores.get(i-1).getValue())) {
                 rank = i + 1;
             }
-            getServer().broadcastMessage("§e#" + rank + " §f" + sortedScores.get(i).getKey().getName() + " §7- §a" + sortedScores.get(i).getValue() + " Punkte");
+            String entry = messages.getString("leaderboard-entry", "#%rank% %player% - %points% Punkte");
+            entry = entry.replace("%rank%", String.valueOf(rank))
+                        .replace("%player%", sortedScores.get(i).getKey().getName())
+                        .replace("%points%", String.valueOf(sortedScores.get(i).getValue()));
+            getServer().broadcastMessage(colorRank + "#" + rank + " " + colorPlayer + sortedScores.get(i).getKey().getName() + " " + colorSeparator + sortedScores.get(i).getValue() + " Punkte");
         }
         if (sortedScores.isEmpty()) {
-            getServer().broadcastMessage("§7Keine Punkte erzielt.");
+            getServer().broadcastMessage(colorNoData + messages.getString("no-points-earned", "Keine Punkte erzielt."));
         }
-        getServer().broadcastMessage("§6§l========================");
+        getServer().broadcastMessage(separator);
 
         // Play end sound
         for (Player p : getServer().getOnlinePlayers()) {
@@ -622,6 +645,8 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             scores.put(player, scores.getOrDefault(player, 0) + 1);
             assignRandomItem(player);
             updateBossBar(player);
+            // Play item found sound
+            player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
         }
     }
 
