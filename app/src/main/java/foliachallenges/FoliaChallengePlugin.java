@@ -414,4 +414,14 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener {
             updateBossBar(player);
         }
     }
+
+    @EventHandler
+    public void onPlayerGameModeChange(PlayerGameModeChangeEvent event) {
+        Player player = event.getPlayer();
+        if (event.getNewGameMode() == GameMode.SURVIVAL && timerRunning) {
+            assignRandomItem(player);
+            updateBossBar(player);
+        }
+        updateActionBarForPlayer(player);
+    }
 }
