@@ -452,7 +452,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     }
 
     private void listItems(CommandSender sender) {
-        sender.sendMessage("§6§l=== Assigned Items ===");
+        sender.sendMessage("§6§l" + messages.getString("assigned-items-title", "=== Assigned Items ==="));
         boolean hasItems = false;
         for (Player p : getServer().getOnlinePlayers()) {
             Material item = assignedItems.get(p);
@@ -463,13 +463,13 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             }
         }
         if (!hasItems) {
-            sender.sendMessage("§7Keine Items zugewiesen.");
+            sender.sendMessage("§7" + messages.getString("no-items-assigned", "Keine Items zugewiesen."));
         }
         sender.sendMessage("§6§l===================");
     }
 
     private void listPoints(CommandSender sender) {
-        sender.sendMessage("§6§l=== Player Points ===");
+        sender.sendMessage("§6§l" + messages.getString("player-points-title", "=== Player Points ==="));
         boolean hasPoints = false;
         for (Player p : getServer().getOnlinePlayers()) {
             int points = scores.getOrDefault(p, 0);
@@ -479,7 +479,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             }
         }
         if (!hasPoints) {
-            sender.sendMessage("§7Keine Punkte erzielt.");
+            sender.sendMessage("§7" + messages.getString("no-points-earned", "Keine Punkte erzielt."));
         }
         sender.sendMessage("§6§l===================");
     }
