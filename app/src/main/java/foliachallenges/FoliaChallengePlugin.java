@@ -906,9 +906,10 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                     }
                 }
             }
-            // If timer was running when saved, resume scheduling
-            if (timerRunning && remainingSeconds > 0) {
+            // If there is remaining time saved, start the timer on plugin enable
+            if (remainingSeconds > 0) {
                 // Ensure worlds are paused and start task
+                timerRunning = true; // ensure timer state
                 scheduler.run(this, t -> pauseWorlds());
                 startTimerTask();
             }
