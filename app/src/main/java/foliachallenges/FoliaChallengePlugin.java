@@ -288,7 +288,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener {
         timerSeconds = minutes * 60L;
         remainingSeconds = timerSeconds;
         timerSet = true;
-        timerRunning = false;
+        // Keep timerRunning as is
         sender.sendMessage(messages.getString("timer-set", "Timer auf %minutes% Minuten gesetzt!").replace("%minutes%", String.valueOf(minutes)));
         updateActionBar();
     }
@@ -388,8 +388,8 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener {
     public void onPlayerMove(PlayerMoveEvent event) {
         Player player = event.getPlayer();
         if (!config.getBoolean("allow-movement-without-timer", false) && !timerRunning && player.getGameMode() == GameMode.SURVIVAL &&
-            (event.getFrom().getX() != event.getTo().getX() || event.getFrom().getY() != event.getTo().getY() || event.getFrom().getZ() != event.getTo().getZ())) {
-            // Cancel movement
+            (event.getFrom().getX() != event.getTo().getX() || event.getFrom().getZ() != event.getTo().getZ())) {
+            // Cancel horizontal movement
             event.setCancelled(true);
             player.sendTitle("§c§l" + messages.getString("timer-paused-title", "STOP"), messages.getString("timer-paused-subtitle", "Der Timer ist pausiert!"), 10, 70, 20);
         }
