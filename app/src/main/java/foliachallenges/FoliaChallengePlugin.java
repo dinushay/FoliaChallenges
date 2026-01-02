@@ -69,8 +69,8 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         getServer().getPluginManager().registerEvents(this, this);
         
         // Register TabCompleter for commands
-        if (getCommand("challenge") != null) {
-            getCommand("challenge").setTabCompleter(this);
+        if (getCommand("challenges") != null) {
+            getCommand("challenges").setTabCompleter(this);
         }
         if (getCommand("timer") != null) {
             getCommand("timer").setTabCompleter(this);
@@ -208,7 +208,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             resumeTimer(sender);
             return true;
         }
-        if (command.getName().equalsIgnoreCase("challenge") || command.getName().equalsIgnoreCase("start")) {
+        if (command.getName().equalsIgnoreCase("challenges") || command.getName().equalsIgnoreCase("start")) {
             if (!sender.hasPermission("foliachallenge.timer")) {
                 sender.sendMessage(messages.getString("no-permission", "Du hast keine Berechtigung dafür!"));
                 return true;
@@ -236,7 +236,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                 if (command.getName().equalsIgnoreCase("start")) {
                     startTimer(sender);
                 } else {
-                    sender.sendMessage(messages.getString("usage-timer", "Usage: /challenge <start|stop|setcountdown|resume|randomitembattle> [minutes]"));
+                    sender.sendMessage(messages.getString("usage-timer", "Usage: /challenges <start|stop|setcountdown|resume|randomitembattle> [minutes]"));
                 }
                 return true;
             }
@@ -252,7 +252,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                     break;
                 case "setcountdown":
                     if (args.length < 2) {
-                        sender.sendMessage(messages.getString("usage-timer-set", "Usage: /challenge setcountdown <minutes>"));
+                        sender.sendMessage(messages.getString("usage-timer-set", "Usage: /challenges setcountdown <minutes>"));
                         return true;
                     }
                     try {
@@ -263,7 +263,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                     }
                     break;
                 default:
-                    sender.sendMessage(messages.getString("usage-timer", "Usage: /challenge <start|stop|setcountdown|resume|randomitembattle> [minutes]"));
+                    sender.sendMessage(messages.getString("usage-timer", "Usage: /challenges <start|stop|setcountdown|resume|randomitembattle> [minutes]"));
                     break;
             }
             return true;
@@ -312,7 +312,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         String cmdName = command.getName().toLowerCase();
-        if (cmdName.equals("challenge")) {
+        if (cmdName.equals("challenges")) {
             if (args.length == 1) {
                 List<String> completions = new ArrayList<>();
                 completions.add("start");
