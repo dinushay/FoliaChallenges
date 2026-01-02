@@ -208,7 +208,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             resumeTimer(sender);
             return true;
         }
-        if (command.getName().equalsIgnoreCase("challenge") || command.getName().equalsIgnoreCase("start") || command.getName().equalsIgnoreCase("timer")) {
+        if (command.getName().equalsIgnoreCase("challenge") || command.getName().equalsIgnoreCase("start")) {
             if (!sender.hasPermission("foliachallenge.timer")) {
                 sender.sendMessage(messages.getString("no-permission", "Du hast keine Berechtigung dafür!"));
                 return true;
@@ -236,7 +236,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                 if (command.getName().equalsIgnoreCase("start")) {
                     startTimer(sender);
                 } else {
-                    sender.sendMessage(messages.getString("usage-timer", "Usage: /challenge <start|stop|setcountdown|resume> [minutes]"));
+                    sender.sendMessage(messages.getString("usage-timer", "Usage: /challenge <start|stop|setcountdown|resume|randomitembattle> [minutes]"));
                 }
                 return true;
             }
@@ -263,7 +263,45 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                     }
                     break;
                 default:
-                    sender.sendMessage(messages.getString("usage-timer", "Usage: /challenge <start|stop|setcountdown|resume> [minutes]"));
+                    sender.sendMessage(messages.getString("usage-timer", "Usage: /challenge <start|stop|setcountdown|resume|randomitembattle> [minutes]"));
+                    break;
+            }
+            return true;
+        }
+        if (command.getName().equalsIgnoreCase("timer")) {
+            if (!sender.hasPermission("foliachallenge.timer")) {
+                sender.sendMessage(messages.getString("no-permission", "Du hast keine Berechtigung dafür!"));
+                return true;
+            }
+
+            if (args.length == 0) {
+                sender.sendMessage(messages.getString("usage-timer", "Usage: /timer <start|stop|setcountdown|resume> [minutes]"));
+                return true;
+            }
+
+            String subCommand = args[0].toLowerCase();
+            switch (subCommand) {
+                case "start":
+                case "resume":
+                    startTimer(sender);
+                    break;
+                case "stop":
+                    stopTimer(sender);
+                    break;
+                case "setcountdown":
+                    if (args.length < 2) {
+                        sender.sendMessage(messages.getString("usage-timer-set", "Usage: /timer setcountdown <minutes>"));
+                        return true;
+                    }
+                    try {
+                        int minutes = Integer.parseInt(args[1]);
+                        setTimer(sender, minutes);
+                    } catch (NumberFormatException e) {
+                        sender.sendMessage(messages.getString("invalid-minutes", "Ungültige Minutenanzahl!"));
+                    }
+                    break;
+                default:
+                    sender.sendMessage(messages.getString("usage-timer", "Usage: /timer <start|stop|setcountdown|resume> [minutes]"));
                     break;
             }
             return true;
@@ -274,7 +312,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         String cmdName = command.getName().toLowerCase();
-        if (cmdName.equals("challenge") || cmdName.equals("timer")) {
+        if (cmdName.equals("challenge")) {
             if (args.length == 1) {
                 List<String> completions = new ArrayList<>();
                 completions.add("start");
@@ -296,6 +334,19 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                         .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
                         .collect(Collectors.toList());
                 }
+            }
+        } else if (cmdName.equals("timer")) {
+            if (args.length == 1) {
+                List<String> completions = new ArrayList<>();
+                completions.add("start");
+                completions.add("stop");
+                completions.add("setcountdown");
+                completions.add("resume");
+                return completions.stream()
+                    .filter(s -> s.toLowerCase().startsWith(args[0].toLowerCase()))
+                    .collect(Collectors.toList());
+            } else if (args.length == 2 && args[0].equalsIgnoreCase("setcountdown")) {
+                return Collections.emptyList(); // No suggestions for minutes
             }
         } else if (cmdName.equals("resume")) {
             return Collections.emptyList(); // No arguments for /resume
