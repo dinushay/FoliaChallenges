@@ -114,9 +114,20 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener {
 
     private BossBar createBossBar(Player player) {
         BossBar bar = getServer().createBossBar("Aktuelles Item: -", BarColor.BLUE, BarStyle.SOLID);
-        bar.addPlayer(player);
         bossBars.put(player, bar);
+        updateBossBarVisibility(player);
         return bar;
+    }
+
+    private void updateBossBarVisibility(Player player) {
+        BossBar bar = bossBars.get(player);
+        if (bar != null) {
+            if (player.getGameMode() == GameMode.SURVIVAL && timerRunning) {
+                bar.addPlayer(player);
+            } else {
+                bar.removePlayer(player);
+            }
+        }
     }
 
     private void updateBossBar(Player player) {
@@ -259,10 +270,8 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener {
             if (p.getGameMode() == GameMode.SURVIVAL) {
                 assignRandomItem(p);
                 updateBossBar(p);
-                if (bossBars.get(p) == null) {
-                    createBossBar(p);
-                }
             }
+            updateBossBarVisibility(p);
         }
         sender.sendMessage(messages.getString("timer-started", "Timer gestartet!"));
         startTimerTask();
@@ -281,11 +290,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener {
         // Update boss bars
         for (Player p : getServer().getOnlinePlayers()) {
             updateBossBar(p);
-            BossBar bar = bossBars.get(p);
-            if (bar != null) {
-                bar.removePlayer(p);
-                bossBars.remove(p);
-            }
+            updateBossBarVisibility(p);
         }
         sender.sendMessage(messages.getString("timer-stopped", "Timer gestoppt!"));
         updateActionBar();
@@ -356,8 +361,8 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener {
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
+        createBossBar(player);
         if (timerRunning && player.getGameMode() == GameMode.SURVIVAL) {
-            createBossBar(player);
             assignRandomItem(player);
         }
         updateBossBar(player);
@@ -425,17 +430,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onPlayerGameModeChange(PlayerGameModeChangeEvent event) {
-        Player player = event.getPlayer();
-        if (event.getNewGameMode() == GameMode.SURVIVAL && timerRunning) {
-            if (bossBars.get(player) == null) {
-                createBossBar(player);
-            }
-        } else {
-            BossBar bar = bossBars.get(player);
-            if (bar != null) {
-                bar.removePlayer(player);
-                bossBars.remove(player);
-            }
-        }
+        updateBossBarVisibility(event.getPlayer());
     }
 }
