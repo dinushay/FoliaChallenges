@@ -318,9 +318,11 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener {
         // Send leaderboard to all players
         getServer().broadcastMessage("§6§l=== Challenge Ergebnisse ===");
         int rank = 1;
-        for (Map.Entry<Player, Integer> entry : sortedScores) {
-            getServer().broadcastMessage("§e#" + rank + " §f" + entry.getKey().getName() + " §7- §a" + entry.getValue() + " Punkte");
-            rank++;
+        for (int i = 0; i < sortedScores.size(); i++) {
+            if (i > 0 && !sortedScores.get(i).getValue().equals(sortedScores.get(i-1).getValue())) {
+                rank = i + 1;
+            }
+            getServer().broadcastMessage("§e#" + rank + " §f" + sortedScores.get(i).getKey().getName() + " §7- §a" + sortedScores.get(i).getValue() + " Punkte");
         }
         if (sortedScores.isEmpty()) {
             getServer().broadcastMessage("§7Keine Punkte erzielt.");
