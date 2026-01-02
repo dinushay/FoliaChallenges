@@ -496,7 +496,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                     saveTask.cancel();
                 }
                 scheduler.run(this, t -> {
-                    pauseWorlds();
+                    resumeWorlds();
                     // Remove all floating item displays immediately when timer ends
                     for (Player p : getServer().getOnlinePlayers()) {
                         removeItemDisplay(p);
