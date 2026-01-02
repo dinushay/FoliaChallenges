@@ -141,8 +141,8 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         // Remove existing display if any
         removeItemDisplay(player);
         
-        // Create new ArmorStand
-        org.bukkit.entity.ArmorStand armorStand = player.getWorld().spawn(player.getLocation().add(0, 2.5, 0), org.bukkit.entity.ArmorStand.class);
+        // Create new ArmorStand above player's head
+        org.bukkit.entity.ArmorStand armorStand = player.getWorld().spawn(player.getLocation().add(0, 2.2, 0), org.bukkit.entity.ArmorStand.class);
         armorStand.setVisible(false);
         armorStand.setGravity(false);
         armorStand.setMarker(true);
@@ -166,8 +166,8 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     private void updateItemDisplay(Player player) {
         org.bukkit.entity.ArmorStand armorStand = itemDisplays.get(player);
         if (armorStand != null && !armorStand.isDead()) {
-            // Update position to follow player
-            armorStand.teleport(player.getLocation().add(0, 2.5, 0));
+            // Update position to follow player above their head
+            armorStand.teleport(player.getLocation().add(0, 2.2, 0));
         }
     }
 
