@@ -435,6 +435,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         // Start save task every second while timer is running
         saveTask = scheduler.runAtFixedRate(this, task -> saveData(), 20, 20);
         startTimerTask();
+        updateActionBar();
     }
 
     private void stopTimer(CommandSender sender) {
@@ -495,6 +496,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         // Start save task every second while timer is running
         saveTask = scheduler.runAtFixedRate(this, task -> saveData(), 20, 20);
         startTimerTask();
+        updateActionBar();
     }
 
     private void startTimerTask() {
