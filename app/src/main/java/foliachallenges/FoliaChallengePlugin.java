@@ -8,6 +8,7 @@ import org.bukkit.boss.BarStyle;
 import org.bukkit.boss.BossBar;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
@@ -40,7 +41,7 @@ import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-public class FoliaChallengePlugin extends JavaPlugin implements Listener {
+public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCompleter {
 
     private FileConfiguration config;
     private FileConfiguration messages;
@@ -260,12 +261,32 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener {
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        if (command.getName().equalsIgnoreCase("challenge")) {
+        String cmdName = command.getName().toLowerCase();
+        if (cmdName.equals("challenge") || cmdName.equals("timer")) {
             if (args.length == 1) {
-                return Arrays.asList("start", "stop", "setcountdown", "resume");
-            } else if (args.length == 2 && args[0].equalsIgnoreCase("setcountdown")) {
-                return Collections.emptyList();
+                List<String> completions = new ArrayList<>();
+                completions.add("start");
+                completions.add("stop");
+                completions.add("setcountdown");
+                completions.add("resume");
+                completions.add("randomitembattle");
+                return completions.stream()
+                    .filter(s -> s.toLowerCase().startsWith(args[0].toLowerCase()))
+                    .collect(Collectors.toList());
+            } else if (args.length == 2) {
+                if (args[0].equalsIgnoreCase("setcountdown")) {
+                    return Collections.emptyList(); // No suggestions for minutes
+                } else if (args[0].equalsIgnoreCase("randomitembattle")) {
+                    List<String> subCompletions = new ArrayList<>();
+                    subCompletions.add("listitems");
+                    subCompletions.add("listpoints");
+                    return subCompletions.stream()
+                        .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
+                        .collect(Collectors.toList());
+                }
             }
+        } else if (cmdName.equals("resume")) {
+            return Collections.emptyList(); // No arguments for /resume
         }
         return null;
     }
