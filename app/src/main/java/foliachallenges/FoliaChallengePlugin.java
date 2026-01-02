@@ -508,7 +508,13 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                 updateActionBar();
             } else {
                 timerRunning = false;
-                scheduler.run(this, t -> pauseWorlds());
+                scheduler.run(this, t -> {
+                    pauseWorlds();
+                    // Remove all floating item displays immediately when timer ends
+                    for (Player p : getServer().getOnlinePlayers()) {
+                        removeItemDisplay(p);
+                    }
+                });
                 endChallenge();
                 updateActionBar();
                 task.cancel();
@@ -637,10 +643,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     }
 
     private void endChallenge() {
-        // Remove all floating item displays immediately
-        for (Player p : getServer().getOnlinePlayers()) {
-            removeItemDisplay(p);
-        }
+        // Note: ArmorStands are already removed in startTimerTask() when timer ends
         
         String colorTitle = messages.getString("color-title", "§6§l");
         String colorRank = messages.getString("color-rank", "§e");
