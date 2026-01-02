@@ -1,0 +1,3 @@
+# FoliaChallenge Configuration
+# Whether players can move when the timer is not started
+allow-movement-without-timer: false

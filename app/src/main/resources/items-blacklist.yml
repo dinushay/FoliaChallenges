@@ -1,0 +1,5 @@
+# FoliaChallenge Item Blacklist
+blacklisted-items:
+  - BEDROCK
+  - BARRIER
+  - COMMAND_BLOCK

@@ -1,0 +1,14 @@
+name: FoliaChallenge
+version: 1.0
+author: dinu_shay
+main: foliachallenges.FoliaChallengePlugin
+api-version: 1.21
+description: A challenge plugin for Folia servers
+folia-supported: true
+commands:
+  challenge:
+    description: Manage the challenge timer
+    usage: /<command> <start|stop|setcountdown|resume> [minutes]
+  start:
+    description: Start the timer
+    usage: /<command>
