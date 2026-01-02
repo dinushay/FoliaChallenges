@@ -122,7 +122,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener {
     private void updateBossBarVisibility(Player player) {
         BossBar bar = bossBars.get(player);
         if (bar != null) {
-            if (player.getGameMode() == GameMode.SURVIVAL && timerRunning) {
+            if (player.getGameMode() == GameMode.SURVIVAL) {
                 bar.addPlayer(player);
             } else {
                 bar.removePlayer(player);
