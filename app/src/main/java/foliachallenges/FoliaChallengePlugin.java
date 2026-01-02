@@ -67,6 +67,18 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         messages = YamlConfiguration.loadConfiguration(new File(getDataFolder(), "messages.yml"));
         loadConfigurableBlacklist();
         getServer().getPluginManager().registerEvents(this, this);
+        
+        // Register TabCompleter for commands
+        if (getCommand("challenge") != null) {
+            getCommand("challenge").setTabCompleter(this);
+        }
+        if (getCommand("timer") != null) {
+            getCommand("timer").setTabCompleter(this);
+        }
+        if (getCommand("resume") != null) {
+            getCommand("resume").setTabCompleter(this);
+        }
+        
         getLogger().info("FoliaChallenge enabled!");
         // Setup scheduler
         this.scheduler = getServer().getGlobalRegionScheduler();
