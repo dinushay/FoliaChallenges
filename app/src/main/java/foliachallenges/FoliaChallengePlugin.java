@@ -101,11 +101,8 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
 
     @Override
     public void onDisable() {
-        // Remove all floating item displays
-        for (Player p : getServer().getOnlinePlayers()) {
-            removeItemDisplay(p);
-        }
-        itemDisplays.clear(); // Clear the map as well
+        // Clear floating item displays map (entities are removed automatically on server shutdown)
+        itemDisplays.clear();
         if (actionBarTask != null) {
             actionBarTask.cancel();
         }
