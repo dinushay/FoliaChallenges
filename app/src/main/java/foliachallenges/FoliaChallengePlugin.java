@@ -93,8 +93,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         scheduler.run(this, task -> pauseWorlds());
         // Start action bar update task
         actionBarTask = scheduler.runAtFixedRate(this, task -> updateActionBar(), 1, 10); // Update every 0.5 seconds
-        // Start periodic save task (every 5 seconds)
-        saveTask = scheduler.runAtFixedRate(this, task -> saveData(), 5, 100); // initial delay 5 ticks, repeat 100 ticks (~5s)
         // Load persisted data (if any)
         loadData();
     }
@@ -421,6 +419,8 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         sender.sendMessage(messages.getString("timer-started", "Timer gestartet!"));
         // Broadcast timer started message to all players
         getServer().broadcastMessage(messages.getString("timer-started-global", "§aDer Challenge-Timer wurde gestartet!"));
+        // Start save task every second while timer is running
+        saveTask = scheduler.runAtFixedRate(this, task -> saveData(), 20, 20);
         startTimerTask();
     }
 
@@ -433,6 +433,9 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         scheduler.run(this, task -> resumeWorlds());
         if (timerTask != null) {
             timerTask.cancel();
+        }
+        if (saveTask != null) {
+            saveTask.cancel();
         }
         // Remove all floating item displays
         for (Player p : getServer().getOnlinePlayers()) {
@@ -476,6 +479,8 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             p.playSound(p.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
         }
         sender.sendMessage(messages.getString("timer-resumed", "Timer fortgesetzt!"));
+        // Start save task every second while timer is running
+        saveTask = scheduler.runAtFixedRate(this, task -> saveData(), 20, 20);
         startTimerTask();
     }
 
@@ -485,10 +490,11 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             if (remainingSeconds > 0) {
                 remainingSeconds--;
                 updateActionBar();
-                // Save remaining time frequently
-                saveData();
             } else {
                 timerRunning = false;
+                if (saveTask != null) {
+                    saveTask.cancel();
+                }
                 scheduler.run(this, t -> {
                     pauseWorlds();
                     // Remove all floating item displays immediately when timer ends
@@ -833,7 +839,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             File dataFile = new File(getDataFolder(), "data.yml");
             FileConfiguration data = new YamlConfiguration();
             data.set("remainingSeconds", remainingSeconds);
-            data.set("timerRunning", timerRunning);
             // Save scores by UUID
             Map<String, Object> scoresMap = new HashMap<>();
             for (Map.Entry<Player, Integer> e : scores.entrySet()) {
