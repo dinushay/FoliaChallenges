@@ -861,7 +861,8 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             if (!dataFile.exists()) return;
             FileConfiguration data = YamlConfiguration.loadConfiguration(dataFile);
             remainingSeconds = data.getLong("remainingSeconds", remainingSeconds);
-            timerRunning = data.getBoolean("timerRunning", false);
+            // Always start paused on plugin enable — do not auto-start timer after restart
+            timerRunning = false;
             // Load scores
             if (data.contains("scores")) {
                 Object obj = data.get("scores");
@@ -895,8 +896,11 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                             Player p = Bukkit.getPlayer(id);
                             if (p != null && p.isOnline()) {
                                 assignedItems.put(p, mat);
-                                createItemDisplay(p, mat);
+                                // Do not spawn ArmorStands on load when plugin starts paused
                                 updateBossBar(p);
+                                if (timerRunning && p.getGameMode() == GameMode.SURVIVAL) {
+                                    createItemDisplay(p, mat);
+                                }
                             } else {
                                 persistedAssigned.put(id, mat);
                             }
@@ -906,12 +910,9 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                     }
                 }
             }
-            // If there is remaining time saved, start the timer on plugin enable
+            // If there is remaining time saved, keep timer paused — admins can resume manually
             if (remainingSeconds > 0) {
-                // Ensure worlds are paused and start task
-                timerRunning = true; // ensure timer state
-                scheduler.run(this, t -> pauseWorlds());
-                startTimerTask();
+                getLogger().info("Found remaining time in data.yml: " + remainingSeconds + "s. Timer is paused on startup.");
             }
         } catch (Exception e) {
             getLogger().severe("Failed to load data.yml: " + e.getMessage());
