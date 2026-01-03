@@ -1,4 +1,4 @@
-name: Upload to Pterodactyl
+name: Build and Upload to Pterodactyl
 
 on:
   push:
@@ -43,10 +43,17 @@ jobs:
             -H "Content-Type: application/json" \
             -H "Accept: application/json")
 
+          if [[ "$RESPONSE" != \{* ]]; then
+            echo "CRITICAL ERROR: Server did not return JSON."
+            echo "Server Response: $RESPONSE"
+            echo "CHECK YOUR SECRETS: PTERO_URL (needs https://) or SERVER_ID (needs to be UUID like a1b2c3d4)"
+            exit 1
+          fi
+
           UPLOAD_URL=$(echo "$RESPONSE" | jq -r '.attributes.url // empty')
 
           if [ -z "$UPLOAD_URL" ]; then
-            echo "Error getting upload URL"
+            echo "Error: API returned JSON but no upload URL."
             echo "$RESPONSE"
             exit 1
           fi
