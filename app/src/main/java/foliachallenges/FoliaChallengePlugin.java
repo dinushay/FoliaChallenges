@@ -756,12 +756,14 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         if (persistedScores.containsKey(uuid)) {
             scores.put(player, persistedScores.get(uuid));
         }
-        if (persistedAssigned.containsKey(uuid) && player.getGameMode() == GameMode.SURVIVAL) {
-            Material mat = persistedAssigned.remove(uuid);
-            assignedItems.put(player, mat);
-            createItemDisplay(player, mat);
-        } else if (timerRunning && player.getGameMode() == GameMode.SURVIVAL) {
-            assignRandomItem(player);
+        if (player.getGameMode() == GameMode.SURVIVAL) {
+            if (persistedAssigned.containsKey(uuid)) {
+                Material mat = persistedAssigned.remove(uuid);
+                assignedItems.put(player, mat);
+                createItemDisplay(player, mat);
+            } else {
+                assignRandomItem(player);
+            }
         }
         updateBossBar(player);
         updateActionBarForPlayer(player);
