@@ -8,11 +8,15 @@ folia-supported: true
 commands:
   challenges:
     description: Manage the challenge timer
+    aliases: [challenge]
   timer:
-    description: Manage the challenge timer (alias for /challenges)
+    description: Manage the challenge timer
   resume:
     description: Resume the challenge timer
-    usage: /<command> <start|stop|setcountdown|resume> [minutes]
   start:
     description: Start the timer
     usage: /<command>
+  reset:
+    description: Resets the challenge and the world
+    usage: /reset confirm
+    permission: foliachallenges.reset
