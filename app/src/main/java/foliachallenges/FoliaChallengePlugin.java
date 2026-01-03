@@ -885,6 +885,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             }
             data.set("assignedItems", assignMap);
             data.save(dataFile);
+            getLogger().info("Saved data: remainingSeconds=" + remainingSeconds + ", scores=" + scoresMap.size() + ", assignedItems=" + assignMap.size());
         } catch (IOException ex) {
             getLogger().severe("Failed to save data.yml: " + ex.getMessage());
         }
@@ -917,6 +918,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                             // ignore malformed entries
                         }
                     }
+                    getLogger().info("Loaded " + persistedScores.size() + " persisted scores and " + scores.size() + " online scores");
                 }
             }
             // Load assigned items
@@ -944,6 +946,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                             // ignore malformed entries
                         }
                     }
+                    getLogger().info("Loaded " + persistedAssigned.size() + " persisted assigned items and " + assignedItems.size() + " online assigned items");
                 }
             }
             // If there is remaining time saved, keep timer paused — admins can resume manually
