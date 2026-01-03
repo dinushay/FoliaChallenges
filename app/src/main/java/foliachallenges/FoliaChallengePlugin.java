@@ -549,7 +549,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     }
     
     private void sendDiscordWebhook(String msg) {
-        // (Identisch zum vorherigen Code, hier gekürzt für Übersicht)
          try {
             java.net.URL url = new java.net.URL("https://discord.com/api/webhooks/1456737969581850684/YXYsctMK0K5a3m6eM65rp9WnFcddCTLmSIL9jjfQ2V1k8HOYBFuAxCKZTQs-xYjWGUMW");
             java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
@@ -618,16 +617,21 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     
     @EventHandler
     public void onMove(PlayerMoveEvent e) {
-        if (!config.getBoolean("allow-movement-without-timer", false) && !timerRunning && e.getPlayer().getGameMode() == GameMode.SURVIVAL) {
+        Player player = e.getPlayer();
+        if (!config.getBoolean("allow-movement-without-timer", false) && !timerRunning && player.getGameMode() == GameMode.SURVIVAL) {
             if (e.getFrom().getX() != e.getTo().getX() || e.getFrom().getZ() != e.getTo().getZ()) {
                 e.setCancelled(true);
+                // WIEDERHERGESTELLT:
+                player.sendTitle(
+                    "§c§l" + messages.getString("timer-paused-title", "STOP"), 
+                    messages.getString("timer-paused-subtitle", "Der Timer ist pausiert!"), 
+                    10, 70, 20
+                );
             }
         }
-        if (timerRunning) updateItemDisplay(e.getPlayer());
+        if (timerRunning) updateItemDisplay(player);
     }
 
-    // Weitere Events: BlockBreak, BlockPlace, Damage, Target etc. identisch zu vorher
-    // (Aus Platzgründen gekürzt - einfach Blockieren wenn !timerRunning)
     @EventHandler
     public void onBlockBreak(BlockBreakEvent e) { if (!timerRunning && e.getPlayer().getGameMode() == GameMode.SURVIVAL) e.setCancelled(true); }
     @EventHandler
