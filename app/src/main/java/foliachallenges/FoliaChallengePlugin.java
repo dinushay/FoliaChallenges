@@ -96,6 +96,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         scheduler.run(this, task -> pauseWorlds());
         // Start action bar update task
         actionBarTask = scheduler.runAtFixedRate(this, task -> updateActionBar(), 1, 10); // Update every 0.5 seconds
+        
         // Load persisted data (if any)
         loadData();
     }
@@ -281,35 +282,41 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                 return true;
             }
 
-            if (args.length > 0 && args[0].equalsIgnoreCase("randomitembattle")) {
-                if (args.length < 2) {
-                    sender.sendMessage(messages.getString("usage-randomitembattle", "Usage: /" + label + " randomitembattle <listitems|listpoints|blockitem>").replace("%command%", label));
+            if (args.length > 0) {
+                String subCmd = args[0].toLowerCase();
+                
+                // NEW: RESET COMMAND
+                if (subCmd.equals("reset")) {
+                    resetChallenge(sender);
                     return true;
                 }
-                if (args[1].equalsIgnoreCase("listitems")) {
-                    listItems(sender);
-                    return true;
-                } else if (args[1].equalsIgnoreCase("listpoints")) {
-                    listPoints(sender);
-                    return true;
-                } else if (args[1].equalsIgnoreCase("blockitem")) {
-                    if (args.length < 3) {
-                        sender.sendMessage("Usage: /" + label + " randomitembattle blockitem <item>");
+
+                if (subCmd.equals("randomitembattle")) {
+                    if (args.length < 2) {
+                        sender.sendMessage(messages.getString("usage-randomitembattle", "Usage: /" + label + " randomitembattle <listitems|listpoints|blockitem>").replace("%command%", label));
                         return true;
                     }
-                    blockItem(sender, args[2]);
-                    return true;
-                } else {
-                    sender.sendMessage(messages.getString("usage-randomitembattle", "Usage: /" + label + " randomitembattle <listitems|listpoints|blockitem>").replace("%command%", label));
-                    return true;
+                    if (args[1].equalsIgnoreCase("listitems")) {
+                        listItems(sender);
+                        return true;
+                    } else if (args[1].equalsIgnoreCase("listpoints")) {
+                        listPoints(sender);
+                        return true;
+                    } else if (args[1].equalsIgnoreCase("blockitem")) {
+                        if (args.length < 3) {
+                            sender.sendMessage("Usage: /" + label + " randomitembattle blockitem <item>");
+                            return true;
+                        }
+                        blockItem(sender, args[2]);
+                        return true;
+                    } else {
+                        sender.sendMessage(messages.getString("usage-randomitembattle", "Usage: /" + label + " randomitembattle <listitems|listpoints|blockitem>").replace("%command%", label));
+                        return true;
+                    }
                 }
             }
 
-            // Only randomitembattle is supported under /challenges now
-            if (args.length == 0) {
-                sender.sendMessage(messages.getString("usage-randomitembattle", "Usage: /" + label + " randomitembattle <listitems|listpoints|blockitem>").replace("%command%", label));
-                return true;
-            }
+            sender.sendMessage(messages.getString("usage-randomitembattle", "Usage: /" + label + " randomitembattle <listitems|listpoints|blockitem>").replace("%command%", label));
             return true;
         }
         if (command.getName().equalsIgnoreCase("timer")) {
@@ -360,6 +367,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             if (args.length == 1) {
                 List<String> completions = new ArrayList<>();
                 completions.add("randomitembattle");
+                completions.add("reset"); // Add reset to tab completion
                 return completions.stream()
                     .filter(s -> s.toLowerCase().startsWith(args[0].toLowerCase()))
                     .collect(Collectors.toList());
@@ -418,22 +426,25 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         }
         timerRunning = true;
         scheduler.run(this, task -> pauseWorlds());
-        // Assign items to players only if no persisted items exist (fresh start)
-        if (persistedAssigned.isEmpty()) {
-            for (Player p : getServer().getOnlinePlayers()) {
-                if (p.getGameMode() == GameMode.SURVIVAL) {
+        
+        // CRITICAL FIX: Do not rely on persistedAssigned.isEmpty()
+        // Check per player if they already have an assigned item.
+        for (Player p : getServer().getOnlinePlayers()) {
+            if (p.getGameMode() == GameMode.SURVIVAL) {
+                // Only assign a NEW random item if the player does NOT have one yet.
+                // This preserves items loaded from data.yml
+                if (!assignedItems.containsKey(p)) {
                     assignRandomItem(p);
-                    updateBossBar(p);
                 }
-            }
-        } else {
-            // Update boss bars for existing assignments
-            for (Player p : getServer().getOnlinePlayers()) {
-                if (p.getGameMode() == GameMode.SURVIVAL) {
-                    updateBossBar(p);
+                // Always update bossbar (creates visual display for existing items too)
+                updateBossBar(p);
+                // Ensure ArmorStands are present
+                if (!itemDisplays.containsKey(p) && assignedItems.containsKey(p)) {
+                    createItemDisplay(p, assignedItems.get(p));
                 }
             }
         }
+
         // Play start sound
         for (Player p : getServer().getOnlinePlayers()) {
             p.playSound(p.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
@@ -445,6 +456,28 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         saveTask = scheduler.runAtFixedRate(this, task -> saveData(), 20, 20);
         startTimerTask();
         updateActionBar();
+    }
+    
+    // NEW: Method to manually reset data if needed (since startTimer now persists)
+    private void resetChallenge(CommandSender sender) {
+        if (timerRunning) {
+            stopTimer(sender);
+        }
+        
+        scores.clear();
+        assignedItems.clear();
+        persistedScores.clear();
+        persistedAssigned.clear();
+        
+        for (Player p : getServer().getOnlinePlayers()) {
+            removeItemDisplay(p);
+            updateBossBar(p);
+        }
+        
+        // Save empty state to clear file
+        saveData();
+        
+        sender.sendMessage("§cChallenge-Daten (Scores & Items) wurden zurückgesetzt!");
     }
 
     private void stopTimer(CommandSender sender) {
@@ -479,33 +512,13 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         // Keep timerRunning as is
         sender.sendMessage(messages.getString("timer-set", "Timer auf %minutes% Minuten gesetzt!").replace("%minutes%", String.valueOf(minutes)));
         updateActionBar();
+        // Save immediately so restart knows timer is set
+        saveData();
     }
 
     private void resumeTimer(CommandSender sender) {
-        if (!timerSet) {
-            sender.sendMessage(messages.getString("timer-not-set-message", "Timer nicht gesetzt!"));
-            return;
-        }
-        if (remainingSeconds == 0) {
-            sender.sendMessage(messages.getString("timer-expired", "Timer ist abgelaufen! Setze neue Zeit mit /challenge setcountdown <minuten>."));
-            return;
-        }
-        if (timerRunning) {
-            sender.sendMessage(messages.getString("timer-already-running", "Timer läuft bereits!"));
-            return;
-        }
-        timerRunning = true;
-        scheduler.run(this, task -> pauseWorlds());
-        // Do not reassign items, just resume
-        // Play start sound
-        for (Player p : getServer().getOnlinePlayers()) {
-            p.playSound(p.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
-        }
-        sender.sendMessage(messages.getString("timer-resumed", "Timer fortgesetzt!"));
-        // Start save task every second while timer is running
-        saveTask = scheduler.runAtFixedRate(this, task -> saveData(), 20, 20);
-        startTimerTask();
-        updateActionBar();
+        // Just reuse startTimer logic now that it's safe
+        startTimer(sender);
     }
 
     private void startTimerTask() {
@@ -757,10 +770,11 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         }
         if (player.getGameMode() == GameMode.SURVIVAL) {
             if (persistedAssigned.containsKey(uuid)) {
-                Material mat = persistedAssigned.remove(uuid);
+                Material mat = persistedAssigned.remove(uuid); // Remove from persistence once loaded
                 assignedItems.put(player, mat);
                 createItemDisplay(player, mat);
-            } else {
+            } else if (timerRunning && !assignedItems.containsKey(player)) {
+                // If timer is running and no data found, assume new player join
                 assignRandomItem(player);
             }
         }
@@ -843,7 +857,9 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     public void onPlayerGameModeChange(PlayerGameModeChangeEvent event) {
         Player player = event.getPlayer();
         if (event.getNewGameMode() == GameMode.SURVIVAL && timerRunning) {
-            assignRandomItem(player);
+            if (!assignedItems.containsKey(player)) {
+                 assignRandomItem(player);
+            }
             updateBossBar(player);
         }
         updateActionBarForPlayer(player);
@@ -858,6 +874,11 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         if (item != null) {
             persistedAssigned.put(player.getUniqueId(), item);
         }
+        // Persist score
+        if (scores.containsKey(player)) {
+            persistedScores.put(player.getUniqueId(), scores.get(player));
+        }
+        
         assignedItems.remove(player);
         scores.remove(player);
     }
@@ -873,7 +894,12 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             for (Map.Entry<Player, Integer> e : scores.entrySet()) {
                 scoresMap.put(e.getKey().getUniqueId().toString(), e.getValue());
             }
+            // Add offline scores
+            for (Map.Entry<UUID, Integer> e : persistedScores.entrySet()) {
+                scoresMap.put(e.getKey().toString(), e.getValue());
+            }
             data.set("scores", scoresMap);
+            
             // Save assigned items by UUID
             Map<String, Object> assignMap = new HashMap<>();
             for (Map.Entry<Player, Material> e : assignedItems.entrySet()) {
@@ -885,7 +911,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             }
             data.set("assignedItems", assignMap);
             data.save(dataFile);
-            getLogger().info("Saved data: remainingSeconds=" + remainingSeconds + ", scores=" + scoresMap.size() + ", assignedItems=" + assignMap.size());
         } catch (IOException ex) {
             getLogger().severe("Failed to save data.yml: " + ex.getMessage());
         }
@@ -918,7 +943,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                             // ignore malformed entries
                         }
                     }
-                    getLogger().info("Loaded " + persistedScores.size() + " persisted scores and " + scores.size() + " online scores");
                 }
             }
             // Load assigned items
@@ -934,11 +958,8 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                             Player p = Bukkit.getPlayer(id);
                             if (p != null && p.isOnline()) {
                                 assignedItems.put(p, mat);
-                                // Do not spawn ArmorStands on load when plugin starts paused
                                 updateBossBar(p);
-                                if (timerRunning && p.getGameMode() == GameMode.SURVIVAL) {
-                                    createItemDisplay(p, mat);
-                                }
+                                // Note: itemDisplays created on startTimer or join
                             } else {
                                 persistedAssigned.put(id, mat);
                             }
@@ -946,7 +967,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                             // ignore malformed entries
                         }
                     }
-                    getLogger().info("Loaded " + persistedAssigned.size() + " persisted assigned items and " + assignedItems.size() + " online assigned items");
                 }
             }
             // If there is remaining time saved, keep timer paused — admins can resume manually
