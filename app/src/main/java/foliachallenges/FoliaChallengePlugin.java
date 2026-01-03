@@ -51,7 +51,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     private long remainingSeconds = 0;
     private boolean timerRunning = false;
     private boolean timerSet = false;
-    private boolean isRestored = false;
     private ScheduledTask actionBarTask;
     private ScheduledTask timerTask;
     private ScheduledTask saveTask;
@@ -419,8 +418,8 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         }
         timerRunning = true;
         scheduler.run(this, task -> pauseWorlds());
-        // Assign items to players only on first start (when timer is not restored from data.yml)
-        if (!isRestored) {
+        // Assign items to players only if none are assigned yet (e.g., first start)
+        if (assignedItems.isEmpty()) {
             for (Player p : getServer().getOnlinePlayers()) {
                 if (p.getGameMode() == GameMode.SURVIVAL) {
                     assignRandomItem(p);
@@ -950,7 +949,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             // If there is remaining time saved, keep timer paused — admins can resume manually
             if (remainingSeconds > 0) {
                 timerSet = true;
-                isRestored = true;
                 getLogger().info("Found remaining time in data.yml: " + remainingSeconds + "s. Timer is paused on startup.");
             }
         } catch (Exception e) {
