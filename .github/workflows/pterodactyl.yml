@@ -20,7 +20,7 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew build
       - name: Deploy To Pterodactyl
-        uses: Itzbenz/deploy-to-pterodactyl@v0.1
+        uses: Itzbenz/deploy-to-pterodactyl
         with:
           source: 'app/build/libs/FoliaChallenges.jar'
           target: 'plugins/FoliaChallenges.jar'
