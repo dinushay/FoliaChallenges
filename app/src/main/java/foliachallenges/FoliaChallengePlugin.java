@@ -285,7 +285,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             if (args.length > 0) {
                 String subCmd = args[0].toLowerCase();
                 
-                // NEW: RESET COMMAND
+                // RESET COMMAND
                 if (subCmd.equals("reset")) {
                     resetChallenge(sender);
                     return true;
@@ -367,7 +367,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             if (args.length == 1) {
                 List<String> completions = new ArrayList<>();
                 completions.add("randomitembattle");
-                completions.add("reset"); // Add reset to tab completion
+                completions.add("reset"); 
                 return completions.stream()
                     .filter(s -> s.toLowerCase().startsWith(args[0].toLowerCase()))
                     .collect(Collectors.toList());
@@ -382,7 +382,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                         .collect(Collectors.toList());
                 }
             } else if (args.length == 3 && args[0].equalsIgnoreCase("randomitembattle") && args[1].equalsIgnoreCase("blockitem")) {
-                // Suggest all Minecraft materials for blockitem command
                 return Arrays.stream(Material.values())
                     .filter(Material::isItem)
                     .map(Material::name)
@@ -401,12 +400,12 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                     .filter(s -> s.toLowerCase().startsWith(args[0].toLowerCase()))
                     .collect(Collectors.toList());
             } else if (args.length == 2 && args[0].equalsIgnoreCase("set")) {
-                return Collections.emptyList(); // No suggestions for minutes
+                return Collections.emptyList(); 
             }
         } else if (cmdName.equals("resume")) {
-            return Collections.emptyList(); // No arguments for /resume
+            return Collections.emptyList();
         } else if (cmdName.equals("start")) {
-            return Collections.emptyList(); // No arguments for /start
+            return Collections.emptyList();
         }
         return null;
     }
@@ -427,12 +426,11 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         timerRunning = true;
         scheduler.run(this, task -> pauseWorlds());
         
-        // CRITICAL FIX: Do not rely on persistedAssigned.isEmpty()
         // Check per player if they already have an assigned item.
         for (Player p : getServer().getOnlinePlayers()) {
             if (p.getGameMode() == GameMode.SURVIVAL) {
                 // Only assign a NEW random item if the player does NOT have one yet.
-                // This preserves items loaded from data.yml
+                // This preserves items loaded from data.yml OR from previous rounds
                 if (!assignedItems.containsKey(p)) {
                     assignRandomItem(p);
                 }
@@ -458,7 +456,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         updateActionBar();
     }
     
-    // NEW: Method to manually reset data if needed (since startTimer now persists)
+    // Manual reset command
     private void resetChallenge(CommandSender sender) {
         if (timerRunning) {
             stopTimer(sender);
@@ -517,7 +515,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     }
 
     private void resumeTimer(CommandSender sender) {
-        // Just reuse startTimer logic now that it's safe
         startTimer(sender);
     }
 
@@ -709,10 +706,16 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             p.playSound(p.getLocation(), org.bukkit.Sound.ENTITY_FIREWORK_ROCKET_BLAST, 1.0f, 1.0f);
         }
 
-        // Clear scores and items
-        scores.clear();
-        assignedItems.clear();
-        itemDisplays.clear(); // Also clear the item displays map
+        // GEÄNDERT: Scores und Items NICHT löschen
+        // scores.clear(); <--- Entfernt
+        // assignedItems.clear(); <--- Entfernt
+        
+        // Items Display entfernen ist okay, wird beim Start neu gesetzt
+        itemDisplays.clear(); 
+        
+        // GEÄNDERT: Daten sichern, damit Punkte beim Server-Restart nicht verloren gehen
+        saveData();
+
         for (Player p : getServer().getOnlinePlayers()) {
             updateBossBar(p);
         }
