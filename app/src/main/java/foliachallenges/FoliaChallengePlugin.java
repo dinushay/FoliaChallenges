@@ -32,16 +32,18 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCompleter {
 
@@ -82,6 +84,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         registerCommand("timer");
         registerCommand("resume");
         registerCommand("start");
+        registerCommand("reset"); // Neuer Command
         
         getLogger().info("FoliaChallenge enabled!");
         
@@ -155,6 +158,8 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     private void createItemDisplay(Player player, Material item) {
         removeItemDisplay(player);
         
+        // Asynchrone oder Regions-sichere Spawn-Logik wäre hier besser, aber für ArmorStands oft okay
+        // In Folia sollte man eigentlich entity.spawnLocation nutzen, hier vereinfacht
         org.bukkit.entity.ArmorStand armorStand = player.getWorld().spawn(player.getLocation().add(0, 2.2, 0), org.bukkit.entity.ArmorStand.class);
         armorStand.setVisible(false);
         armorStand.setGravity(false);
@@ -239,6 +244,32 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         String cmdName = command.getName().toLowerCase();
         
+        // --- RESET LOGIK ---
+        if (cmdName.equals("reset")) {
+            if (!sender.hasPermission("foliachallenge.reset")) {
+                sender.sendMessage(messages.getString("no-permission", "Du hast keine Berechtigung dafür!"));
+                return true;
+            }
+
+            // Wenn keine Argumente oder nicht 'confirm'
+            if (args.length == 0 || !args[0].equalsIgnoreCase("confirm")) {
+                sender.sendMessage("§8§m---------------------------------------------");
+                sender.sendMessage("§c§lWARNUNG: §7Du bist dabei, die gesamte Challenge zu resetten.");
+                sender.sendMessage("§4§lDIES LÖSCHT DIE GANZE WELT!");
+                sender.sendMessage("");
+                sender.sendMessage("§7Bitte bestätige diesen Vorgang mit:");
+                sender.sendMessage("§6/reset confirm");
+                sender.sendMessage("§8§m---------------------------------------------");
+                return true;
+            }
+
+            // Wenn confirmed wurde
+            performFullReset(sender);
+            return true;
+        }
+
+        // --- Andere Commands ---
+        
         if (!sender.hasPermission("foliachallenge.timer")) {
             sender.sendMessage(messages.getString("no-permission", "Du hast keine Berechtigung dafür!"));
             return true;
@@ -254,7 +285,9 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                 String subCmd = args[0].toLowerCase();
                 
                 if (subCmd.equals("reset")) {
-                    resetChallenge(sender);
+                    // Der alte Soft-Reset (nur Items/Scores), falls man ihn behalten will
+                    // Wenn der auch die Welt löschen soll, hier performFullReset(sender) aufrufen.
+                    resetChallengeData(sender); 
                     return true;
                 }
                 if (subCmd.equals("randomitembattle")) {
@@ -321,7 +354,11 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         String cmdName = command.getName().toLowerCase();
-        if (cmdName.equals("challenges")) {
+        
+        if (cmdName.equals("reset")) {
+             if (args.length == 1) return Collections.singletonList("confirm");
+        }
+        else if (cmdName.equals("challenges")) {
             if (args.length == 1) return filter(args[0], Arrays.asList("randomitembattle", "reset"));
             if (args.length == 2 && args[0].equalsIgnoreCase("randomitembattle")) return filter(args[1], Arrays.asList("listitems", "listpoints", "blockitem"));
             if (args.length == 3 && args[1].equalsIgnoreCase("blockitem")) {
@@ -336,6 +373,78 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     
     private List<String> filter(String arg, List<String> options) {
         return options.stream().filter(s -> s.toLowerCase().startsWith(arg.toLowerCase())).collect(Collectors.toList());
+    }
+
+    // --- RESET FUNKTIONALITÄT (WELT LÖSCHEN) ---
+
+    private void performFullReset(CommandSender sender) {
+        // 1. Timer stoppen und Daten löschen
+        if (timerRunning) {
+            timerRunning = false;
+            if (timerTask != null) timerTask.cancel();
+            if (saveTask != null) saveTask.cancel();
+        }
+
+        // Daten clearen
+        scores.clear();
+        assignedItems.clear();
+        remainingSeconds = 0;
+        timerSet = false;
+        
+        // Data file überschreiben (leer)
+        saveData();
+
+        sender.sendMessage("§aDaten wurden zurückgesetzt.");
+        getServer().broadcastMessage("§4§lACHTUNG: §cDie Welt wird in 5 Sekunden gelöscht und der Server stoppt!");
+
+        // 2. Scheduler zum Kicken und Löschen
+        scheduler.runDelayed(this, task -> {
+            // Alle Spieler kicken
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                p.kickPlayer("§cWelt-Reset wird durchgeführt!\n§eDer Server startet gleich neu (manuell oder per Skript).");
+            }
+
+            getLogger().info("Starting world deletion process...");
+
+            // 3. Versuchen, die Welt-Ordner zu löschen
+            // Hinweis: Der Server hält Locks auf Dateien im Root-Ordner (session.lock etc).
+            // Wir versuchen, den Inhalt rekursiv zu löschen.
+            deleteWorldFolder("world");
+            deleteWorldFolder("world_nether");
+            deleteWorldFolder("world_the_end");
+
+            getLogger().info("World files deleted (best effort). Shutting down.");
+
+            // 4. Server herunterfahren
+            Bukkit.shutdown();
+
+        }, 100L); // 5 Sekunden Verzögerung (20 Ticks * 5)
+    }
+
+    private void deleteWorldFolder(String worldName) {
+        File worldFolder = new File(Bukkit.getWorldContainer(), worldName);
+        if (worldFolder.exists()) {
+            deleteDirectoryRecursively(worldFolder.toPath());
+        }
+    }
+
+    private void deleteDirectoryRecursively(Path path) {
+        try (Stream<Path> walk = Files.walk(path)) {
+            walk.sorted(Comparator.reverseOrder())
+                .map(Path::toFile)
+                .forEach(file -> {
+                    // Wir versuchen die Datei zu löschen. Wenn sie gelockt ist (z.B. session.lock),
+                    // wird es fehlschlagen, aber wir machen weiter.
+                    // Wichtig ist vor allem 'region', 'playerdata', 'stats' etc.
+                    try {
+                        file.delete();
+                    } catch (Exception ignored) {
+                        // Ignorieren, da wir den Server eh stoppen
+                    }
+                });
+        } catch (IOException e) {
+            getLogger().warning("Could not fully delete world folder: " + path.toString());
+        }
     }
 
     // --- Timer Logic ---
@@ -382,10 +491,10 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         updateActionBar();
     }
     
-    private void resetChallenge(CommandSender sender) {
+    // Dies ist der alte Reset nur für Daten (Score/Items), genutzt von /challenges reset
+    private void resetChallengeData(CommandSender sender) {
         if (timerRunning) stopTimer(sender);
         
-        // Hier löschen wir die Daten tatsächlich
         scores.clear();
         assignedItems.clear();
         
@@ -394,7 +503,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             updateBossBar(p);
         }
         saveData();
-        sender.sendMessage("§cChallenge-Daten (Scores & Items) wurden vollständig zurückgesetzt!");
+        sender.sendMessage("§cChallenge-Daten (Scores & Items) wurden zurückgesetzt (Welt bleibt erhalten)!");
     }
 
     private void stopTimer(CommandSender sender) {
@@ -484,7 +593,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     private void listItems(CommandSender sender) {
         sender.sendMessage("§6§l=== Assigned Items ===");
         assignedItems.forEach((uuid, mat) -> {
-            // Zeige nur Online Spieler an, um Spam zu vermeiden (oder ändere Logik nach Wunsch)
             Player p = Bukkit.getPlayer(uuid);
             if (p != null) {
                  sender.sendMessage("§f" + p.getName() + " §7- §a" + formatItemName(mat.name()));
@@ -598,7 +706,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         Player player = event.getPlayer();
         removeItemDisplay(player);
         bossBars.remove(player);
-        // HIER NICHTS MEHR LÖSCHEN! assignedItems und scores bleiben via UUID erhalten.
     }
 
     @EventHandler
@@ -621,7 +728,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         if (!config.getBoolean("allow-movement-without-timer", false) && !timerRunning && player.getGameMode() == GameMode.SURVIVAL) {
             if (e.getFrom().getX() != e.getTo().getX() || e.getFrom().getZ() != e.getTo().getZ()) {
                 e.setCancelled(true);
-                // WIEDERHERGESTELLT:
                 player.sendTitle(
                     "§c§l" + messages.getString("timer-paused-title", "STOP!"), 
                     messages.getString("timer-paused-subtitle", "Der Timer ist pausiert!"), 
