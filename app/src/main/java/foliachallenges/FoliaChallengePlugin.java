@@ -623,7 +623,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                 e.setCancelled(true);
                 // WIEDERHERGESTELLT:
                 player.sendTitle(
-                    "§c§l" + messages.getString("timer-paused-title", "STOP"), 
+                    "§c§l" + messages.getString("timer-paused-title", "STOP!"), 
                     messages.getString("timer-paused-subtitle", "Der Timer ist pausiert!"), 
                     10, 70, 20
                 );
