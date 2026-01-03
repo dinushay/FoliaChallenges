@@ -513,8 +513,8 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         GlobalRegionScheduler scheduler = getServer().getGlobalRegionScheduler();
         timerTask = scheduler.runAtFixedRate(this, task -> {
             if (remainingSeconds > 0) {
-                remainingSeconds--;
                 updateActionBar();
+                remainingSeconds--;
             } else {
                 timerRunning = false;
                 if (saveTask != null) {
