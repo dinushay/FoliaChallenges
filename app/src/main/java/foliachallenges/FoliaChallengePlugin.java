@@ -215,7 +215,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         if (!file.exists()) {
             try (InputStream in = getResource(filename)) {
                 if (in != null) Files.copy(in, file.toPath());
-            } catch (IOException e) { e.printStackTrace(); }
+            } catch (IOException e) { getLogger().log(java.util.logging.Level.SEVERE, "Could not copy resource " + filename, e); }
         }
     }
 
