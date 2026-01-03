@@ -418,8 +418,8 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         }
         timerRunning = true;
         scheduler.run(this, task -> pauseWorlds());
-        // Assign items to players only if none are assigned yet (e.g., first start, not resume)
-        if (assignedItems.isEmpty() && persistedAssigned.isEmpty()) {
+        // Assign items to players only on first start (when timer is not restored from data.yml)
+        if (!timerSet) {
             for (Player p : getServer().getOnlinePlayers()) {
                 if (p.getGameMode() == GameMode.SURVIVAL) {
                     assignRandomItem(p);
