@@ -726,8 +726,11 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             message = messages.getString("color-timer-not-set", "§e") + messages.getString("timer-not-set", "• Zeit wurde nicht gesetzt •");
         } else {
             String timeStr = formatTime(remainingSeconds);
-            String color = timerRunning ? messages.getString("color-timer-running", "§a") : messages.getString("color-timer-paused", "§c");
-            message = messages.getString("timer-display", "• Zeit: %time% •").replace("%time%", color + timeStr + "§f");
+            if (timerRunning) {
+                message = messages.getString("timer-running-display", "§aTimer läuft: %time%").replace("%time%", timeStr);
+            } else {
+                message = messages.getString("timer-paused-display", "§cTimer pausiert: %time%").replace("%time%", timeStr);
+            }
         }
         player.sendActionBar(message);
     }
