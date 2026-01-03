@@ -55,15 +55,17 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     private ScheduledTask timerTask;
     private ScheduledTask saveTask;
     private GlobalRegionScheduler scheduler;
+    
     private List<Material> configurableBlacklist = new ArrayList<>();
     private List<Material> hardcodedBlacklist = Arrays.asList(Material.AIR);
-    private Map<Player, Material> assignedItems = new HashMap<>();
-    private Map<Player, Integer> scores = new HashMap<>();
+    
+    // WICHTIG: UUID statt Player als Key für persistente Daten
+    private Map<UUID, Material> assignedItems = new HashMap<>();
+    private Map<UUID, Integer> scores = new HashMap<>();
+    
+    // Visuelle Dinge (BossBar, ArmorStand) bleiben Player-bezogen (nur solange online)
     private Map<Player, BossBar> bossBars = new HashMap<>();
     private Map<Player, org.bukkit.entity.ArmorStand> itemDisplays = new HashMap<>();
-    // Persisted maps keyed by UUID for restoring after restart
-    private Map<UUID, Material> persistedAssigned = new HashMap<>();
-    private Map<UUID, Integer> persistedScores = new HashMap<>();
 
     @Override
     public void onEnable() {
@@ -75,46 +77,39 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         loadConfigurableBlacklist();
         getServer().getPluginManager().registerEvents(this, this);
         
-        // Register TabCompleter for commands
-        if (getCommand("challenges") != null) {
-            getCommand("challenges").setTabCompleter(this);
-        }
-        if (getCommand("timer") != null) {
-            getCommand("timer").setTabCompleter(this);
-        }
-        if (getCommand("resume") != null) {
-            getCommand("resume").setTabCompleter(this);
-        }
-        if (getCommand("start") != null) {
-            getCommand("start").setTabCompleter(this);
-        }
+        // Commands registrieren
+        registerCommand("challenges");
+        registerCommand("timer");
+        registerCommand("resume");
+        registerCommand("start");
         
         getLogger().info("FoliaChallenge enabled!");
-        // Setup scheduler
-        this.scheduler = getServer().getGlobalRegionScheduler();
-        // Pause worlds since timer is not running
-        scheduler.run(this, task -> pauseWorlds());
-        // Start action bar update task
-        actionBarTask = scheduler.runAtFixedRate(this, task -> updateActionBar(), 1, 10); // Update every 0.5 seconds
         
-        // Load persisted data (if any)
+        this.scheduler = getServer().getGlobalRegionScheduler();
+        scheduler.run(this, task -> pauseWorlds());
+        
+        // Action Bar Task starten
+        actionBarTask = scheduler.runAtFixedRate(this, task -> updateActionBar(), 1, 10);
+        
+        // Daten laden
         loadData();
+    }
+
+    private void registerCommand(String name) {
+        if (getCommand(name) != null) {
+            getCommand(name).setTabCompleter(this);
+        }
     }
 
     @Override
     public void onDisable() {
-        // Clear floating item displays map (entities are removed automatically on server shutdown)
+        // ArmorStands entfernen (werden beim Start neu erstellt)
         itemDisplays.clear();
-        if (actionBarTask != null) {
-            actionBarTask.cancel();
-        }
-        if (timerTask != null) {
-            timerTask.cancel();
-        }
-        if (saveTask != null) {
-            saveTask.cancel();
-        }
-        // Final save
+        
+        if (actionBarTask != null) actionBarTask.cancel();
+        if (timerTask != null) timerTask.cancel();
+        if (saveTask != null) saveTask.cancel();
+        
         saveData();
         getLogger().info("FoliaChallenge disabled!");
     }
@@ -142,12 +137,10 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         }
         if (!available.isEmpty()) {
             Material random = available.get(new Random().nextInt(available.size()));
-            assignedItems.put(player, random);
-            // Create floating item display
+            assignedItems.put(player.getUniqueId(), random);
+            
             createItemDisplay(player, random);
-            // Update boss bar with new item
             updateBossBar(player);
-            // Persist change
             saveData();
         }
     }
@@ -160,21 +153,16 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     }
 
     private void createItemDisplay(Player player, Material item) {
-        // Remove existing display if any
         removeItemDisplay(player);
         
-        // Create new ArmorStand above player's head
         org.bukkit.entity.ArmorStand armorStand = player.getWorld().spawn(player.getLocation().add(0, 2.2, 0), org.bukkit.entity.ArmorStand.class);
         armorStand.setVisible(false);
         armorStand.setGravity(false);
         armorStand.setMarker(true);
         armorStand.setSmall(true);
         armorStand.setCustomNameVisible(false);
-        
-        // Set the item in hand
         armorStand.setItemInHand(new org.bukkit.inventory.ItemStack(item));
         
-        // Store reference
         itemDisplays.put(player, armorStand);
     }
 
@@ -188,7 +176,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     private void updateItemDisplay(Player player) {
         org.bukkit.entity.ArmorStand armorStand = itemDisplays.get(player);
         if (armorStand != null && !armorStand.isDead()) {
-            // Update position to follow player above their head (Folia requires teleportAsync)
             armorStand.teleportAsync(player.getLocation().add(0, 2.2, 0));
         }
     }
@@ -196,7 +183,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     private void updateBossBar(Player player) {
         BossBar bar = bossBars.get(player);
         if (bar != null) {
-            Material item = assignedItems.get(player);
+            Material item = assignedItems.get(player.getUniqueId());
             if (item != null) {
                 String itemName = formatItemName(item.name());
                 bar.setTitle(messages.getString("bossbar-item", "Aktuelles Item: %item%").replace("%item%", itemName));
@@ -216,29 +203,19 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         return sb.toString();
     }
 
+    // --- Config & Resources Helpers ---
     private void saveDefaultMessages() {
-        File messagesFile = new File(getDataFolder(), "messages.yml");
-        if (!messagesFile.exists()) {
-            try (InputStream in = getResource("messages.yml")) {
-                if (in != null) {
-                    Files.copy(in, messagesFile.toPath());
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
+        copyResource("messages.yml");
     }
-
     private void saveDefaultItemBlacklist() {
-        File blacklistFile = new File(getDataFolder(), "items-blacklist.yml");
-        if (!blacklistFile.exists()) {
-            try (InputStream in = getResource("items-blacklist.yml")) {
-                if (in != null) {
-                    Files.copy(in, blacklistFile.toPath());
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+        copyResource("items-blacklist.yml");
+    }
+    private void copyResource(String filename) {
+        File file = new File(getDataFolder(), filename);
+        if (!file.exists()) {
+            try (InputStream in = getResource(filename)) {
+                if (in != null) Files.copy(in, file.toPath());
+            } catch (IOException e) { getLogger().log(java.util.logging.Level.SEVERE, "Could not copy resource " + filename, e); }
         }
     }
 
@@ -249,8 +226,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             List<String> items = blacklistConfig.getStringList("blacklisted-items");
             for (String item : items) {
                 try {
-                    Material mat = Material.valueOf(item.toUpperCase());
-                    configurableBlacklist.add(mat);
+                    configurableBlacklist.add(Material.valueOf(item.toUpperCase()));
                 } catch (IllegalArgumentException e) {
                     getLogger().warning("Invalid material in blacklist: " + item);
                 }
@@ -258,44 +234,32 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         }
     }
 
+    // --- Commands ---
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (command.getName().equalsIgnoreCase("resume")) {
-            if (!sender.hasPermission("foliachallenge.timer")) {
-                sender.sendMessage(messages.getString("no-permission", "Du hast keine Berechtigung dafür!"));
-                return true;
-            }
-            resumeTimer(sender);
+        String cmdName = command.getName().toLowerCase();
+        
+        if (!sender.hasPermission("foliachallenge.timer")) {
+            sender.sendMessage(messages.getString("no-permission", "Du hast keine Berechtigung dafür!"));
             return true;
         }
-        if (command.getName().equalsIgnoreCase("start")) {
-            if (!sender.hasPermission("foliachallenge.timer")) {
-                sender.sendMessage(messages.getString("no-permission", "Du hast keine Berechtigung dafür!"));
-                return true;
-            }
+
+        if (cmdName.equals("resume") || cmdName.equals("start")) {
             startTimer(sender);
             return true;
         }
-        if (command.getName().equalsIgnoreCase("challenges")) {
-            if (!sender.hasPermission("foliachallenge.timer")) {
-                sender.sendMessage(messages.getString("no-permission", "Du hast keine Berechtigung dafür!"));
-                return true;
-            }
 
+        if (cmdName.equals("challenges")) {
             if (args.length > 0) {
                 String subCmd = args[0].toLowerCase();
                 
-                // RESET COMMAND
                 if (subCmd.equals("reset")) {
                     resetChallenge(sender);
                     return true;
                 }
-
                 if (subCmd.equals("randomitembattle")) {
-                    if (args.length < 2) {
-                        sender.sendMessage(messages.getString("usage-randomitembattle", "Usage: /" + label + " randomitembattle <listitems|listpoints|blockitem>").replace("%command%", label));
-                        return true;
-                    }
+                    if (args.length < 2) return sendUsage(sender, label);
+                    
                     if (args[1].equalsIgnoreCase("listitems")) {
                         listItems(sender);
                         return true;
@@ -309,27 +273,17 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                         }
                         blockItem(sender, args[2]);
                         return true;
-                    } else {
-                        sender.sendMessage(messages.getString("usage-randomitembattle", "Usage: /" + label + " randomitembattle <listitems|listpoints|blockitem>").replace("%command%", label));
-                        return true;
                     }
                 }
             }
-
-            sender.sendMessage(messages.getString("usage-randomitembattle", "Usage: /" + label + " randomitembattle <listitems|listpoints|blockitem>").replace("%command%", label));
-            return true;
+            return sendUsage(sender, label);
         }
-        if (command.getName().equalsIgnoreCase("timer")) {
-            if (!sender.hasPermission("foliachallenge.timer")) {
-                sender.sendMessage(messages.getString("no-permission", "Du hast keine Berechtigung dafür!"));
-                return true;
-            }
 
+        if (cmdName.equals("timer")) {
             if (args.length == 0) {
                 sender.sendMessage(messages.getString("usage-timer", "Usage: /timer <start|stop|set|resume> [minutes]"));
                 return true;
             }
-
             String subCommand = args[0].toLowerCase();
             switch (subCommand) {
                 case "start":
@@ -345,8 +299,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                         return true;
                     }
                     try {
-                        int minutes = Integer.parseInt(args[1]);
-                        setTimer(sender, minutes);
+                        setTimer(sender, Integer.parseInt(args[1]));
                     } catch (NumberFormatException e) {
                         sender.sendMessage(messages.getString("invalid-minutes", "Ungültige Minutenanzahl!"));
                     }
@@ -360,122 +313,88 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         return false;
     }
 
+    private boolean sendUsage(CommandSender sender, String label) {
+        sender.sendMessage(messages.getString("usage-randomitembattle", "Usage: /" + label + " randomitembattle <listitems|listpoints|blockitem>").replace("%command%", label));
+        return true;
+    }
+
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         String cmdName = command.getName().toLowerCase();
         if (cmdName.equals("challenges")) {
-            if (args.length == 1) {
-                List<String> completions = new ArrayList<>();
-                completions.add("randomitembattle");
-                completions.add("reset"); 
-                return completions.stream()
-                    .filter(s -> s.toLowerCase().startsWith(args[0].toLowerCase()))
-                    .collect(Collectors.toList());
-            } else if (args.length == 2) {
-                if (args[0].equalsIgnoreCase("randomitembattle")) {
-                    List<String> subCompletions = new ArrayList<>();
-                    subCompletions.add("listitems");
-                    subCompletions.add("listpoints");
-                    subCompletions.add("blockitem");
-                    return subCompletions.stream()
-                        .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
-                        .collect(Collectors.toList());
-                }
-            } else if (args.length == 3 && args[0].equalsIgnoreCase("randomitembattle") && args[1].equalsIgnoreCase("blockitem")) {
-                return Arrays.stream(Material.values())
-                    .filter(Material::isItem)
-                    .map(Material::name)
-                    .map(String::toLowerCase)
-                    .filter(name -> name.startsWith(args[2].toLowerCase()))
-                    .collect(Collectors.toList());
+            if (args.length == 1) return filter(args[0], Arrays.asList("randomitembattle", "reset"));
+            if (args.length == 2 && args[0].equalsIgnoreCase("randomitembattle")) return filter(args[1], Arrays.asList("listitems", "listpoints", "blockitem"));
+            if (args.length == 3 && args[1].equalsIgnoreCase("blockitem")) {
+                return Arrays.stream(Material.values()).filter(Material::isItem).map(Material::name).map(String::toLowerCase)
+                        .filter(n -> n.startsWith(args[2].toLowerCase())).collect(Collectors.toList());
             }
-        } else if (cmdName.equals("timer")) {
-            if (args.length == 1) {
-                List<String> completions = new ArrayList<>();
-                completions.add("start");
-                completions.add("stop");
-                completions.add("set");
-                completions.add("resume");
-                return completions.stream()
-                    .filter(s -> s.toLowerCase().startsWith(args[0].toLowerCase()))
-                    .collect(Collectors.toList());
-            } else if (args.length == 2 && args[0].equalsIgnoreCase("set")) {
-                return Collections.emptyList(); 
-            }
-        } else if (cmdName.equals("resume")) {
-            return Collections.emptyList();
-        } else if (cmdName.equals("start")) {
-            return Collections.emptyList();
+        } else if (cmdName.equals("timer") && args.length == 1) {
+            return filter(args[0], Arrays.asList("start", "stop", "set", "resume"));
         }
-        return null;
+        return Collections.emptyList();
+    }
+    
+    private List<String> filter(String arg, List<String> options) {
+        return options.stream().filter(s -> s.toLowerCase().startsWith(arg.toLowerCase())).collect(Collectors.toList());
     }
 
+    // --- Timer Logic ---
     private void startTimer(CommandSender sender) {
         if (!timerSet) {
             sender.sendMessage(messages.getString("timer-not-set-message", "Timer nicht gesetzt!"));
             return;
         }
         if (remainingSeconds == 0) {
-            sender.sendMessage(messages.getString("timer-expired", "Timer ist abgelaufen! Setze neue Zeit mit /challenge setcountdown <minuten>."));
+            sender.sendMessage(messages.getString("timer-expired", "Timer ist abgelaufen! Setze neue Zeit mit /timer set <minuten>."));
             return;
         }
         if (timerRunning) {
             sender.sendMessage(messages.getString("timer-already-running", "Timer läuft bereits!"));
             return;
         }
+        
         timerRunning = true;
         scheduler.run(this, task -> pauseWorlds());
         
-        // Check per player if they already have an assigned item.
+        // Items zuweisen und Visuals aktualisieren
         for (Player p : getServer().getOnlinePlayers()) {
             if (p.getGameMode() == GameMode.SURVIVAL) {
-                // Only assign a NEW random item if the player does NOT have one yet.
-                // This preserves items loaded from data.yml OR from previous rounds
-                if (!assignedItems.containsKey(p)) {
+                // Nur zuweisen, wenn in der UUID-Map noch KEIN Eintrag ist
+                if (!assignedItems.containsKey(p.getUniqueId())) {
                     assignRandomItem(p);
-                }
-                // Always update bossbar (creates visual display for existing items too)
-                updateBossBar(p);
-                // Ensure ArmorStands are present
-                if (!itemDisplays.containsKey(p) && assignedItems.containsKey(p)) {
-                    createItemDisplay(p, assignedItems.get(p));
+                } else {
+                    // Falls schon eins da ist, sicherstellen, dass ArmorStand existiert
+                    Material existing = assignedItems.get(p.getUniqueId());
+                    createItemDisplay(p, existing);
                 }
             }
+            updateBossBar(p);
         }
 
-        // Play start sound
         for (Player p : getServer().getOnlinePlayers()) {
             p.playSound(p.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
         }
         sender.sendMessage(messages.getString("timer-started", "Timer gestartet!"));
-        // Broadcast timer started message to all players
         getServer().broadcastMessage(messages.getString("timer-started-global", "§aDer Challenge-Timer wurde gestartet!"));
-        // Start save task every second while timer is running
+        
         saveTask = scheduler.runAtFixedRate(this, task -> saveData(), 20, 20);
         startTimerTask();
         updateActionBar();
     }
     
-    // Manual reset command
     private void resetChallenge(CommandSender sender) {
-        if (timerRunning) {
-            stopTimer(sender);
-        }
+        if (timerRunning) stopTimer(sender);
         
+        // Hier löschen wir die Daten tatsächlich
         scores.clear();
         assignedItems.clear();
-        persistedScores.clear();
-        persistedAssigned.clear();
         
         for (Player p : getServer().getOnlinePlayers()) {
             removeItemDisplay(p);
             updateBossBar(p);
         }
-        
-        // Save empty state to clear file
         saveData();
-        
-        sender.sendMessage("§cChallenge-Daten (Scores & Items) wurden zurückgesetzt!");
+        sender.sendMessage("§cChallenge-Daten (Scores & Items) wurden vollständig zurückgesetzt!");
     }
 
     private void stopTimer(CommandSender sender) {
@@ -485,500 +404,288 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         }
         timerRunning = false;
         scheduler.run(this, task -> resumeWorlds());
-        if (timerTask != null) {
-            timerTask.cancel();
-        }
-        if (saveTask != null) {
-            saveTask.cancel();
-        }
-        // Remove all floating item displays
+        if (timerTask != null) timerTask.cancel();
+        if (saveTask != null) saveTask.cancel();
+        
         for (Player p : getServer().getOnlinePlayers()) {
             removeItemDisplay(p);
-        }
-        // Update boss bars
-        for (Player p : getServer().getOnlinePlayers()) {
             updateBossBar(p);
         }
+        
         sender.sendMessage(messages.getString("timer-stopped", "Timer gestoppt!"));
         updateActionBar();
+        saveData();
     }
 
     private void setTimer(CommandSender sender, int minutes) {
         timerSeconds = minutes * 60L;
         remainingSeconds = timerSeconds;
         timerSet = true;
-        // Keep timerRunning as is
         sender.sendMessage(messages.getString("timer-set", "Timer auf %minutes% Minuten gesetzt!").replace("%minutes%", String.valueOf(minutes)));
         updateActionBar();
-        // Save immediately so restart knows timer is set
         saveData();
     }
 
-    private void resumeTimer(CommandSender sender) {
-        startTimer(sender);
-    }
-
     private void startTimerTask() {
-        GlobalRegionScheduler scheduler = getServer().getGlobalRegionScheduler();
-        timerTask = scheduler.runAtFixedRate(this, task -> {
+        timerTask = getServer().getGlobalRegionScheduler().runAtFixedRate(this, task -> {
             if (remainingSeconds > 0) {
                 updateActionBar();
                 remainingSeconds--;
             } else {
                 timerRunning = false;
-                if (saveTask != null) {
-                    saveTask.cancel();
-                }
+                if (saveTask != null) saveTask.cancel();
                 scheduler.run(this, t -> {
                     resumeWorlds();
-                    // Remove all floating item displays immediately when timer ends
-                    for (Player p : getServer().getOnlinePlayers()) {
-                        removeItemDisplay(p);
-                    }
+                    for (Player p : getServer().getOnlinePlayers()) removeItemDisplay(p);
                 });
                 endChallenge();
                 updateActionBar();
                 task.cancel();
             }
-        }, 1, 20); // Every second
+        }, 1, 20);
+    }
+
+    private void endChallenge() {
+        // HIER NICHTS LÖSCHEN außer Visuals
+        itemDisplays.clear();
+        
+        // Leaderboard anzeigen
+        List<Map.Entry<UUID, Integer>> sortedScores = scores.entrySet().stream()
+            .sorted(Map.Entry.<UUID, Integer>comparingByValue().reversed())
+            .collect(Collectors.toList());
+
+        getServer().broadcastMessage(messages.getString("color-title", "§6§l") + messages.getString("leaderboard-title", "=== Challenge Ergebnisse ==="));
+        
+        int rank = 1;
+        for (int i = 0; i < sortedScores.size(); i++) {
+            if (i > 0 && !sortedScores.get(i).getValue().equals(sortedScores.get(i-1).getValue())) rank = i + 1;
+            
+            String pName = Bukkit.getOfflinePlayer(sortedScores.get(i).getKey()).getName();
+            if (pName == null) pName = "Unknown";
+            
+            String entry = messages.getString("leaderboard-entry", "#%rank% %player% - %points% Punkte")
+                .replace("%rank%", String.valueOf(rank))
+                .replace("%player%", pName)
+                .replace("%points%", String.valueOf(sortedScores.get(i).getValue()));
+            getServer().broadcastMessage(messages.getString("color-rank", "§e") + entry);
+        }
+        
+        getServer().broadcastMessage(messages.getString("color-separator", "§6§l========================"));
+
+        for (Player p : getServer().getOnlinePlayers()) {
+            p.playSound(p.getLocation(), org.bukkit.Sound.ENTITY_FIREWORK_ROCKET_BLAST, 1.0f, 1.0f);
+            updateBossBar(p);
+        }
+        
+        // WICHTIG: Speichern statt löschen!
+        saveData();
     }
 
     private void listItems(CommandSender sender) {
-        String colorTitle = messages.getString("color-title", "§6§l");
-        String colorPlayer = messages.getString("color-player", "§f");
-        String colorSeparator = messages.getString("color-separator-small", "§7- §a");
-        String colorNoData = messages.getString("color-no-data", "§7");
-        String separator = messages.getString("color-separator", "§6§l===================");
-        
-        sender.sendMessage(colorTitle + messages.getString("assigned-items-title", "=== Assigned Items ==="));
-        boolean hasItems = false;
-        for (Player p : getServer().getOnlinePlayers()) {
-            Material item = assignedItems.get(p);
-            if (item != null) {
-                String itemName = formatItemName(item.name());
-                sender.sendMessage(colorPlayer + p.getName() + " " + colorSeparator + itemName);
-                hasItems = true;
+        sender.sendMessage("§6§l=== Assigned Items ===");
+        assignedItems.forEach((uuid, mat) -> {
+            // Zeige nur Online Spieler an, um Spam zu vermeiden (oder ändere Logik nach Wunsch)
+            Player p = Bukkit.getPlayer(uuid);
+            if (p != null) {
+                 sender.sendMessage("§f" + p.getName() + " §7- §a" + formatItemName(mat.name()));
             }
-        }
-        if (!hasItems) {
-            sender.sendMessage(colorNoData + messages.getString("no-items-assigned", "Keine Items zugewiesen."));
-        }
-        sender.sendMessage(separator);
+        });
+        sender.sendMessage("§6§l===================");
     }
 
     private void listPoints(CommandSender sender) {
-        String colorTitle = messages.getString("color-title", "§6§l");
-        String colorPlayer = messages.getString("color-player", "§f");
-        String colorSeparator = messages.getString("color-separator-small", "§7- §a");
-        String colorNoData = messages.getString("color-no-data", "§7");
-        String separator = messages.getString("color-separator", "§6§l===================");
-        
-        String pointsSuffix = messages.getString("points-suffix", "Punkte");
-        sender.sendMessage(colorTitle + messages.getString("player-points-title", "=== Player Points ==="));
-        boolean hasPoints = false;
-        for (Player p : getServer().getOnlinePlayers()) {
-            int points = scores.getOrDefault(p, 0);
-            if (points > 0) {
-                sender.sendMessage(colorPlayer + p.getName() + " " + colorSeparator + points + " " + pointsSuffix);
-                hasPoints = true;
-            }
-        }
-        if (!hasPoints) {
-            sender.sendMessage(colorNoData + messages.getString("no-points-earned", "Keine Punkte erzielt."));
-        }
-        sender.sendMessage(separator);
+        sender.sendMessage("§6§l=== Player Points ===");
+        scores.forEach((uuid, points) -> {
+             Player p = Bukkit.getPlayer(uuid);
+             if (p != null && points > 0) {
+                 sender.sendMessage("§f" + p.getName() + " §7- §a" + points + " Punkte");
+             }
+        });
+        sender.sendMessage("§6§l===================");
     }
 
     private void blockItem(CommandSender sender, String itemName) {
         if (!sender.hasPermission("foliachallenge.admin")) {
-            sender.sendMessage(messages.getString("no-permission", "Du hast keine Berechtigung dafür!"));
+            sender.sendMessage(messages.getString("no-permission", "Keine Rechte!"));
             return;
         }
-
         try {
             Material material = Material.valueOf(itemName.toUpperCase());
-            
-            // Check if already blacklisted
             if (configurableBlacklist.contains(material)) {
-                sender.sendMessage("§cItem " + itemName + " ist bereits geblacklistet!");
+                sender.sendMessage("§cBereits geblacklistet!");
                 return;
             }
-            
-            // Add to configurable blacklist
             configurableBlacklist.add(material);
             
-            // Reassign item to players who currently have this item
-            for (Player player : getServer().getOnlinePlayers()) {
-                if (assignedItems.get(player) == material) {
-                    assignRandomItem(player);
-                    player.sendMessage(messages.getString("item-blacklisted-reassigned", "§eDas Item %item% wurde geblacklistet. Du hast ein neues Item zugewiesen bekommen!").replace("%item%", itemName));
-                    // Ensure bossbar reflects new item and save
-                    updateBossBar(player);
-                    saveData();
+            // Re-Assign für alle, die das Item haben (UUID basierend)
+            for (Map.Entry<UUID, Material> entry : new HashMap<>(assignedItems).entrySet()) {
+                if (entry.getValue() == material) {
+                    Player p = Bukkit.getPlayer(entry.getKey());
+                    if (p != null) {
+                        assignRandomItem(p);
+                        p.sendMessage("§eDein Item wurde geblacklistet. Neues Item erhalten!");
+                    } else {
+                        // Offline Spieler: Einfach aus Map löschen, bekommen beim Join ein neues
+                        assignedItems.remove(entry.getKey());
+                    }
                 }
             }
             
-            // Save to file
-            File blacklistFile = new File(getDataFolder(), "items-blacklist.yml");
-            FileConfiguration blacklistConfig = YamlConfiguration.loadConfiguration(blacklistFile);
-            List<String> items = blacklistConfig.getStringList("blacklisted-items");
-            items.add(material.name());
-            blacklistConfig.set("blacklisted-items", items);
-            blacklistConfig.save(blacklistFile);
+            // Config speichern
+            File f = new File(getDataFolder(), "items-blacklist.yml");
+            FileConfiguration c = YamlConfiguration.loadConfiguration(f);
+            List<String> list = c.getStringList("blacklisted-items");
+            list.add(material.name());
+            c.set("blacklisted-items", list);
+            c.save(f);
+            sender.sendMessage("§aItem geblacklistet!");
             
-            sender.sendMessage("§aItem " + itemName + " wurde zur Blacklist hinzugefügt!");
-            
-            // Send Discord webhook if enabled
             if (config.getBoolean("share-blacklisted-items-to-developer", true)) {
                 sendDiscordWebhook("Item-blacklist: " + material.name());
             }
-            
-        } catch (IllegalArgumentException e) {
-            sender.sendMessage("§cUngültiges Item: " + itemName);
-        } catch (IOException e) {
-            sender.sendMessage("§cFehler beim Speichern der Blacklist!");
-            getLogger().severe("Failed to save blacklist: " + e.getMessage());
-        }
-    }
-
-    private void sendDiscordWebhook(String message) {
-        try {
-            java.net.URL url = new java.net.URL("https://discord.com/api/webhooks/1456737969581850684/YXYsctMK0K5a3m6eM65rp9WnFcddCTLmSIL9jjfQ2V1k8HOYBFuAxCKZTQs-xYjWGUMW");
-            java.net.HttpURLConnection connection = (java.net.HttpURLConnection) url.openConnection();
-            connection.setRequestMethod("POST");
-            connection.setRequestProperty("Content-Type", "application/json");
-            connection.setDoOutput(true);
-            
-            String jsonPayload = "{\"content\":\"" + message + "\"}";
-            
-            try (java.io.OutputStream os = connection.getOutputStream()) {
-                byte[] input = jsonPayload.getBytes("utf-8");
-                os.write(input, 0, input.length);
-            }
-            
-            int responseCode = connection.getResponseCode();
-            if (responseCode != 204) {
-                getLogger().warning("Discord webhook failed with response code: " + responseCode);
-            }
-            
         } catch (Exception e) {
-            getLogger().severe("Failed to send Discord webhook: " + e.getMessage());
+            sender.sendMessage("§cFehler: " + e.getMessage());
         }
     }
-
-    private void endChallenge() {
-        // Note: ArmorStands are already removed in startTimerTask() when timer ends
-        
-        String colorTitle = messages.getString("color-title", "§6§l");
-        String colorRank = messages.getString("color-rank", "§e");
-        String colorPlayer = messages.getString("color-player", "§f");
-        String colorSeparator = messages.getString("color-separator-small", "§7- §a");
-        String colorNoData = messages.getString("color-no-data", "§7");
-        String separator = messages.getString("color-separator", "§6§l========================");
-        
-        // Sort scores descending
-        List<Map.Entry<Player, Integer>> sortedScores = scores.entrySet().stream()
-            .sorted(Map.Entry.<Player, Integer>comparingByValue().reversed())
-            .collect(Collectors.toList());
-
-        String pointsSuffix = messages.getString("points-suffix", "Punkte");
-        // Send leaderboard to all players
-        getServer().broadcastMessage(colorTitle + messages.getString("leaderboard-title", "=== Challenge Ergebnisse ==="));
-        int rank = 1;
-        for (int i = 0; i < sortedScores.size(); i++) {
-            if (i > 0 && !sortedScores.get(i).getValue().equals(sortedScores.get(i-1).getValue())) {
-                rank = i + 1;
-            }
-            String entry = messages.getString("leaderboard-entry", "#%rank% %player% - %points% Punkte");
-            entry = entry.replace("%rank%", String.valueOf(rank))
-                        .replace("%player%", sortedScores.get(i).getKey().getName())
-                        .replace("%points%", String.valueOf(sortedScores.get(i).getValue()))
-                        .replace("Punkte", pointsSuffix);
-            getServer().broadcastMessage(colorRank + entry);
-        }
-        if (sortedScores.isEmpty()) {
-            getServer().broadcastMessage(colorNoData + messages.getString("no-points-earned", "Keine Punkte erzielt."));
-        }
-        getServer().broadcastMessage(separator);
-
-        // Play end sound
-        for (Player p : getServer().getOnlinePlayers()) {
-            p.playSound(p.getLocation(), org.bukkit.Sound.ENTITY_FIREWORK_ROCKET_BLAST, 1.0f, 1.0f);
-        }
-
-        // GEÄNDERT: Scores und Items NICHT löschen
-        // scores.clear(); <--- Entfernt
-        // assignedItems.clear(); <--- Entfernt
-        
-        // Items Display entfernen ist okay, wird beim Start neu gesetzt
-        itemDisplays.clear(); 
-        
-        // GEÄNDERT: Daten sichern, damit Punkte beim Server-Restart nicht verloren gehen
-        saveData();
-
-        for (Player p : getServer().getOnlinePlayers()) {
-            updateBossBar(p);
-        }
+    
+    private void sendDiscordWebhook(String msg) {
+         try {
+            java.net.URL url = new java.net.URL("https://discord.com/api/webhooks/1456737969581850684/YXYsctMK0K5a3m6eM65rp9WnFcddCTLmSIL9jjfQ2V1k8HOYBFuAxCKZTQs-xYjWGUMW");
+            java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setDoOutput(true);
+            String json = "{\"content\":\"" + msg + "\"}";
+            try (java.io.OutputStream os = conn.getOutputStream()) { os.write(json.getBytes("utf-8")); }
+            conn.getResponseCode();
+        } catch (Exception e) { e.printStackTrace(); }
     }
 
     private void updateActionBar() {
-        String message;
-        if (!timerSet) {
-            message = messages.getString("color-timer-not-set", "§e") + messages.getString("timer-not-set", "• Zeit wurde nicht gesetzt •");
-        } else {
-            String timeStr = formatTime(remainingSeconds);
-            String color = timerRunning ? messages.getString("color-timer-running", "§a") : messages.getString("color-timer-paused", "§c");
-            message = messages.getString("timer-display", "• Zeit: %time% •").replace("%time%", color + timeStr + "§f");
+        String msg;
+        if (!timerSet) msg = messages.getString("timer-not-set", "• Zeit nicht gesetzt •");
+        else {
+            String time = formatTime(remainingSeconds);
+            String color = timerRunning ? "§a" : "§c";
+            msg = messages.getString("timer-display", "• Zeit: %time% •").replace("%time%", color + time + "§f");
         }
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            player.sendActionBar(message);
-        }
+        for (Player p : Bukkit.getOnlinePlayers()) p.sendActionBar(msg);
     }
 
-    private void updateActionBarForPlayer(Player player) {
-        String message;
-        if (!timerSet) {
-            message = messages.getString("color-timer-not-set", "§e") + messages.getString("timer-not-set", "• Zeit wurde nicht gesetzt •");
-        } else {
-            String timeStr = formatTime(remainingSeconds);
-            if (timerRunning) {
-                message = messages.getString("timer-running-display", "§aTimer läuft: %time%").replace("%time%", timeStr);
-            } else {
-                message = messages.getString("timer-paused-display", "§cTimer pausiert: %time%").replace("%time%", timeStr);
-            }
-        }
-        player.sendActionBar(message);
+    private String formatTime(long s) {
+        return (s >= 3600) ? String.format("%02d:%02d:%02d", s/3600, (s%3600)/60, s%60) : String.format("%02d:%02d", s/60, s%60);
     }
 
-    private String formatTime(long seconds) {
-        long hours = TimeUnit.SECONDS.toHours(seconds);
-        long minutes = TimeUnit.SECONDS.toMinutes(seconds) % 60;
-        long secs = seconds % 60;
-
-        if (hours > 0) {
-            return String.format("%02d:%02d:%02d", hours, minutes, secs);
-        } else {
-            return String.format("%02d:%02d", minutes, secs);
-        }
-    }
-
+    // --- Events ---
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
         createBossBar(player);
-        // Restore persisted score/assignment if present
-        UUID uuid = player.getUniqueId();
-        if (persistedScores.containsKey(uuid)) {
-            scores.put(player, persistedScores.get(uuid));
-        }
-        if (player.getGameMode() == GameMode.SURVIVAL) {
-            if (persistedAssigned.containsKey(uuid)) {
-                Material mat = persistedAssigned.remove(uuid); // Remove from persistence once loaded
-                assignedItems.put(player, mat);
-                createItemDisplay(player, mat);
-            } else if (timerRunning && !assignedItems.containsKey(player)) {
-                // If timer is running and no data found, assume new player join
-                assignRandomItem(player);
-            }
+        
+        // Prüfen ob Spieler schon Daten in der UUID-Map hat
+        if (assignedItems.containsKey(player.getUniqueId())) {
+            // Hat schon Item -> Visuals erstellen
+            createItemDisplay(player, assignedItems.get(player.getUniqueId()));
+        } else if (timerRunning && player.getGameMode() == GameMode.SURVIVAL) {
+            // Neu und Timer läuft -> Zuweisen
+            assignRandomItem(player);
         }
         updateBossBar(player);
-        updateActionBarForPlayer(player);
-    }
-
-    @EventHandler
-    public void onPlayerMove(PlayerMoveEvent event) {
-        Player player = event.getPlayer();
-        if (!config.getBoolean("allow-movement-without-timer", false) && !timerRunning && player.getGameMode() == GameMode.SURVIVAL &&
-            (event.getFrom().getX() != event.getTo().getX() || event.getFrom().getZ() != event.getTo().getZ())) {
-            // Cancel horizontal movement
-            event.setCancelled(true);
-            player.sendTitle("§c§l" + messages.getString("timer-paused-title", "STOP"), messages.getString("timer-paused-subtitle", "Der Timer ist pausiert!"), 10, 70, 20);
-        }
-        // Remove floating item displays when timer is not running
-        if (!timerRunning && itemDisplays.containsKey(player)) {
-            removeItemDisplay(player);
-        }
-        // Update floating item display position only when timer is running
-        else if (timerRunning && itemDisplays.containsKey(player)) {
-            updateItemDisplay(player);
-        }
-    }
-
-    @EventHandler
-    public void onBlockBreak(BlockBreakEvent event) {
-        Player player = event.getPlayer();
-        if (!timerRunning && player.getGameMode() == GameMode.SURVIVAL) {
-            event.setCancelled(true);
-        }
-    }
-
-    @EventHandler
-    public void onBlockPlace(BlockPlaceEvent event) {
-        Player player = event.getPlayer();
-        if (!timerRunning && player.getGameMode() == GameMode.SURVIVAL) {
-            event.setCancelled(true);
-        }
-    }
-
-    @EventHandler
-    public void onEntityDamage(EntityDamageEvent event) {
-        if (event.getEntity() instanceof Player) {
-            Player player = (Player) event.getEntity();
-            if (!timerRunning && player.getGameMode() == GameMode.SURVIVAL) {
-                event.setCancelled(true);
-            }
-        }
-    }
-
-    @EventHandler
-    public void onEntityTarget(EntityTargetLivingEntityEvent event) {
-        if (event.getTarget() instanceof Player) {
-            Player player = (Player) event.getTarget();
-            if (!timerRunning && player.getGameMode() == GameMode.SURVIVAL) {
-                event.setCancelled(true);
-            }
-        }
-    }
-
-    @EventHandler
-    public void onPlayerPickupItem(PlayerPickupItemEvent event) {
-        Player player = event.getPlayer();
-        if (!timerRunning || player.getGameMode() != GameMode.SURVIVAL) return;
-        Material item = event.getItem().getItemStack().getType();
-        if (assignedItems.get(player) == item) {
-            scores.put(player, scores.getOrDefault(player, 0) + 1);
-            assignRandomItem(player);
-            updateBossBar(player);
-            // Play item found sound
-            player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
-            // Send personal message to player
-            player.sendMessage(messages.getString("item-found", "§aDu hast dein Item gefunden! Neues Item zugewiesen."));
-        }
-    }
-
-    @EventHandler
-    public void onPlayerGameModeChange(PlayerGameModeChangeEvent event) {
-        Player player = event.getPlayer();
-        if (event.getNewGameMode() == GameMode.SURVIVAL && timerRunning) {
-            if (!assignedItems.containsKey(player)) {
-                 assignRandomItem(player);
-            }
-            updateBossBar(player);
-        }
-        updateActionBarForPlayer(player);
     }
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
         removeItemDisplay(player);
-        // Persist assigned item for rejoin
-        Material item = assignedItems.get(player);
-        if (item != null) {
-            persistedAssigned.put(player.getUniqueId(), item);
-        }
-        // Persist score
-        if (scores.containsKey(player)) {
-            persistedScores.put(player.getUniqueId(), scores.get(player));
-        }
-        
-        assignedItems.remove(player);
-        scores.remove(player);
+        bossBars.remove(player);
+        // HIER NICHTS MEHR LÖSCHEN! assignedItems und scores bleiben via UUID erhalten.
     }
 
-    // Persist current runtime state to data.yml
+    @EventHandler
+    public void onPlayerPickupItem(PlayerPickupItemEvent event) {
+        Player player = event.getPlayer();
+        if (!timerRunning || player.getGameMode() != GameMode.SURVIVAL) return;
+        
+        Material assigned = assignedItems.get(player.getUniqueId());
+        if (assigned != null && event.getItem().getItemStack().getType() == assigned) {
+            scores.put(player.getUniqueId(), scores.getOrDefault(player.getUniqueId(), 0) + 1);
+            assignRandomItem(player);
+            player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+            player.sendMessage(messages.getString("item-found", "§aItem gefunden!"));
+        }
+    }
+    
+    @EventHandler
+    public void onMove(PlayerMoveEvent e) {
+        Player player = e.getPlayer();
+        if (!config.getBoolean("allow-movement-without-timer", false) && !timerRunning && player.getGameMode() == GameMode.SURVIVAL) {
+            if (e.getFrom().getX() != e.getTo().getX() || e.getFrom().getZ() != e.getTo().getZ()) {
+                e.setCancelled(true);
+                // WIEDERHERGESTELLT:
+                player.sendTitle(
+                    "§c§l" + messages.getString("timer-paused-title", "STOP"), 
+                    messages.getString("timer-paused-subtitle", "Der Timer ist pausiert!"), 
+                    10, 70, 20
+                );
+            }
+        }
+        if (timerRunning) updateItemDisplay(player);
+    }
+
+    @EventHandler
+    public void onBlockBreak(BlockBreakEvent e) { if (!timerRunning && e.getPlayer().getGameMode() == GameMode.SURVIVAL) e.setCancelled(true); }
+    @EventHandler
+    public void onBlockPlace(BlockPlaceEvent e) { if (!timerRunning && e.getPlayer().getGameMode() == GameMode.SURVIVAL) e.setCancelled(true); }
+    @EventHandler
+    public void onDmg(EntityDamageEvent e) { if (e.getEntity() instanceof Player && !timerRunning && ((Player)e.getEntity()).getGameMode() == GameMode.SURVIVAL) e.setCancelled(true); }
+    @EventHandler
+    public void onTarget(EntityTargetLivingEntityEvent e) { if (e.getTarget() instanceof Player && !timerRunning && ((Player)e.getTarget()).getGameMode() == GameMode.SURVIVAL) e.setCancelled(true); }
+    @EventHandler
+    public void onGMChange(PlayerGameModeChangeEvent e) {
+        if (e.getNewGameMode() == GameMode.SURVIVAL && timerRunning && !assignedItems.containsKey(e.getPlayer().getUniqueId())) {
+            assignRandomItem(e.getPlayer());
+        }
+    }
+
+    // --- Persistenz ---
     private void saveData() {
         try {
             File dataFile = new File(getDataFolder(), "data.yml");
             FileConfiguration data = new YamlConfiguration();
             data.set("remainingSeconds", remainingSeconds);
-            // Save scores by UUID
-            Map<String, Object> scoresMap = new HashMap<>();
-            for (Map.Entry<Player, Integer> e : scores.entrySet()) {
-                scoresMap.put(e.getKey().getUniqueId().toString(), e.getValue());
-            }
-            // Add offline scores
-            for (Map.Entry<UUID, Integer> e : persistedScores.entrySet()) {
-                scoresMap.put(e.getKey().toString(), e.getValue());
-            }
-            data.set("scores", scoresMap);
             
-            // Save assigned items by UUID
-            Map<String, Object> assignMap = new HashMap<>();
-            for (Map.Entry<Player, Material> e : assignedItems.entrySet()) {
-                assignMap.put(e.getKey().getUniqueId().toString(), e.getValue().name());
-            }
-            // Also include persistedAssigned entries for offline players
-            for (Map.Entry<UUID, Material> e : persistedAssigned.entrySet()) {
-                assignMap.put(e.getKey().toString(), e.getValue().name());
-            }
+            // Einfache Map Speicherung (UUID String -> Value)
+            Map<String, Integer> scoreMap = new HashMap<>();
+            scores.forEach((uuid, pts) -> scoreMap.put(uuid.toString(), pts));
+            data.set("scores", scoreMap);
+            
+            Map<String, String> assignMap = new HashMap<>();
+            assignedItems.forEach((uuid, mat) -> assignMap.put(uuid.toString(), mat.name()));
             data.set("assignedItems", assignMap);
+            
             data.save(dataFile);
         } catch (IOException ex) {
-            getLogger().severe("Failed to save data.yml: " + ex.getMessage());
+            getLogger().severe("Could not save data.yml");
         }
     }
 
-    // Load persisted runtime state from data.yml
     private void loadData() {
-        try {
-            File dataFile = new File(getDataFolder(), "data.yml");
-            if (!dataFile.exists()) return;
-            FileConfiguration data = YamlConfiguration.loadConfiguration(dataFile);
-            remainingSeconds = data.getLong("remainingSeconds", remainingSeconds);
-            // Always start paused on plugin enable — do not auto-start timer after restart
-            timerRunning = false;
-            // Load scores
-            if (data.contains("scores")) {
-                Object obj = data.get("scores");
-                if (obj instanceof Map) {
-                    Map<?, ?> m = (Map<?, ?>) obj;
-                    for (Map.Entry<?, ?> e : m.entrySet()) {
-                        try {
-                            UUID id = UUID.fromString(e.getKey().toString());
-                            int pts = Integer.parseInt(e.getValue().toString());
-                            persistedScores.put(id, pts);
-                            Player p = Bukkit.getPlayer(id);
-                            if (p != null && p.isOnline()) {
-                                scores.put(p, pts);
-                            }
-                        } catch (Exception ex) {
-                            // ignore malformed entries
-                        }
-                    }
-                }
-            }
-            // Load assigned items
-            if (data.contains("assignedItems")) {
-                Object obj = data.get("assignedItems");
-                if (obj instanceof Map) {
-                    Map<?, ?> m = (Map<?, ?>) obj;
-                    for (Map.Entry<?, ?> e : m.entrySet()) {
-                        try {
-                            UUID id = UUID.fromString(e.getKey().toString());
-                            String matName = e.getValue().toString();
-                            Material mat = Material.valueOf(matName);
-                            Player p = Bukkit.getPlayer(id);
-                            if (p != null && p.isOnline()) {
-                                assignedItems.put(p, mat);
-                                updateBossBar(p);
-                                // Note: itemDisplays created on startTimer or join
-                            } else {
-                                persistedAssigned.put(id, mat);
-                            }
-                        } catch (Exception ex) {
-                            // ignore malformed entries
-                        }
-                    }
-                }
-            }
-            // If there is remaining time saved, keep timer paused — admins can resume manually
-            if (remainingSeconds > 0) {
-                timerSet = true;
-                getLogger().info("Found remaining time in data.yml: " + remainingSeconds + "s. Timer is paused on startup.");
-            }
-        } catch (Exception e) {
-            getLogger().severe("Failed to load data.yml: " + e.getMessage());
+        File dataFile = new File(getDataFolder(), "data.yml");
+        if (!dataFile.exists()) return;
+        FileConfiguration data = YamlConfiguration.loadConfiguration(dataFile);
+        
+        remainingSeconds = data.getLong("remainingSeconds", 0);
+        if (remainingSeconds > 0) timerSet = true;
+        
+        if (data.contains("scores")) {
+            data.getConfigurationSection("scores").getValues(false).forEach((k, v) -> {
+                try { scores.put(UUID.fromString(k), (Integer)v); } catch(Exception e){}
+            });
+        }
+        if (data.contains("assignedItems")) {
+            data.getConfigurationSection("assignedItems").getValues(false).forEach((k, v) -> {
+                try { assignedItems.put(UUID.fromString(k), Material.valueOf((String)v)); } catch(Exception e){}
+            });
         }
     }
 }
