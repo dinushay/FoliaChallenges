@@ -418,10 +418,12 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         }
         timerRunning = true;
         scheduler.run(this, task -> pauseWorlds());
-        // Assign items to players
+        // Assign items to players (only if not already assigned)
         for (Player p : getServer().getOnlinePlayers()) {
             if (p.getGameMode() == GameMode.SURVIVAL) {
-                assignRandomItem(p);
+                if (!assignedItems.containsKey(p)) {
+                    assignRandomItem(p);
+                }
                 updateBossBar(p);
             }
         }
