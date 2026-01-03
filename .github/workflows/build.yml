@@ -1,10 +1,10 @@
-name: Build and Release JAR
+name: Build and create JAR Artifact
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main ]
 
 jobs:
   build:
