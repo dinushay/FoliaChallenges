@@ -117,8 +117,9 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
 
         sender.sendMessage("§aReset eingeleitet. Server startet neu...");
 
-        // FIX: Verzögerung auf 20 Ticks (1 Sekunde) erhöht
-        Bukkit.getScheduler().runTaskLater(this, () -> {
+        // FIX: Verwendung von GlobalRegionScheduler statt Bukkit.getScheduler()
+        // runDelayed(Plugin, Consumer<ScheduledTask>, ticks)
+        getServer().getGlobalRegionScheduler().runDelayed(this, task -> {
             try {
                 Bukkit.spigot().restart();
             } catch (Exception e) {
@@ -128,7 +129,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     }
 
     private void performWorldReset() {
-        // FIX: Ersetzt getServer().getProperties() durch eine robuste Methode
         String levelName = getMainLevelName(); 
         
         List<String> worldsToDelete = Arrays.asList(
@@ -146,7 +146,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         }
     }
 
-    // FIX: Neue Methode zum Lesen der server.properties
     private String getMainLevelName() {
         try (InputStream input = new FileInputStream("server.properties")) {
             Properties prop = new Properties();
@@ -158,22 +157,19 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         }
     }
 
-    // FIX: Robustere Löschmethode mit java.nio.file.Files.walk
     private void deleteWorldFolder(File folder) {
         Path rootPath = folder.toPath();
         if (!Files.exists(rootPath)) return;
 
         try (Stream<Path> walk = Files.walk(rootPath)) {
-            walk.sorted(Comparator.reverseOrder()) // Von unten nach oben löschen (Dateien vor Ordnern)
+            walk.sorted(Comparator.reverseOrder()) 
                 .forEach(path -> {
                     try {
-                        // session.lock nicht löschen, wenn es gesperrt ist (oft vom Server-Prozess gehalten)
                         if (path.endsWith("session.lock")) {
                             return; 
                         }
                         Files.delete(path);
                     } catch (IOException e) {
-                        // Loggen aber nicht abbrechen, damit der Rest gelöscht wird
                         getLogger().log(Level.WARNING, "Failed to delete: " + path + " (" + e.getMessage() + ")");
                     }
                 });
