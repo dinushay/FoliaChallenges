@@ -92,6 +92,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         
         registerCommand("challenges");
         registerCommand("timer");
+        registerCommand("reset"); // Neuer Befehl registriert
         registerCommand("resume");
         registerCommand("start");
         
@@ -115,16 +116,11 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             p.kickPlayer(kickMsg);
         }
 
-        sender.sendMessage("§aReset eingeleitet. Server startet neu...");
+        sender.sendMessage("§aReset eingeleitet. Server fährt herunter...");
 
-        // FIX: Verwendung von GlobalRegionScheduler statt Bukkit.getScheduler()
-        // runDelayed(Plugin, Consumer<ScheduledTask>, ticks)
+        // Shutdown statt Restart (Hoster startet neu)
         getServer().getGlobalRegionScheduler().runDelayed(this, task -> {
-            try {
-                Bukkit.spigot().restart();
-            } catch (Exception e) {
-                Bukkit.shutdown();
-            }
+            Bukkit.shutdown();
         }, 20L); 
     }
 
@@ -332,15 +328,31 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             return true;
         }
 
+        // --- RESET BEFEHL START ---
+        if (cmdName.equals("reset")) {
+            if (!sender.hasPermission("foliachallenge.reset") && !sender.hasPermission("foliachallenge.admin")) {
+                sender.sendMessage(messages.getString("no-permission", "Du hast keine Berechtigung dafür!"));
+                return true;
+            }
+
+            if (args.length == 1 && args[0].equalsIgnoreCase("confirm")) {
+                resetChallengeData(sender);
+                prepareWorldReset(sender);
+            } else {
+                sender.sendMessage("§4§lACHTUNG: §cDieser Befehl löscht alle Challenge-Daten");
+                sender.sendMessage("§cund §lsetzt die Welt zurück§c!");
+                sender.sendMessage("§7Nutze §c/reset confirm §7um fortzufahren.");
+            }
+            return true;
+        }
+        // --- RESET BEFEHL END ---
+
         if (cmdName.equals("challenges")) {
             if (args.length > 0) {
                 String subCmd = args[0].toLowerCase();
                 
-                if (subCmd.equals("reset")) {
-                    resetChallengeData(sender);
-                    prepareWorldReset(sender);
-                    return true;
-                }
+                // HIER: Reset aus dem Challenges-Befehl entfernt
+                
                 if (subCmd.equals("randomitembattle")) {
                     if (args.length < 2) return sendUsage(sender, label);
                     
@@ -398,6 +410,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     }
 
     private boolean sendUsage(CommandSender sender, String label) {
+        // Usage Hinweis angepasst
         sender.sendMessage(messages.getString("usage-randomitembattle", "Usage: /" + label + " randomitembattle <listitems|listpoints|blockitem>").replace("%command%", label));
         return true;
     }
@@ -405,8 +418,15 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         String cmdName = command.getName().toLowerCase();
+        
+        // TabComplete für neuen Befehl
+        if (cmdName.equals("reset")) {
+            if (args.length == 1) return filter(args[0], Arrays.asList("confirm"));
+        }
+
         if (cmdName.equals("challenges")) {
-            if (args.length == 1) return filter(args[0], Arrays.asList("randomitembattle", "reset"));
+            // "reset" hier entfernt
+            if (args.length == 1) return filter(args[0], Arrays.asList("randomitembattle"));
             if (args.length == 2 && args[0].equalsIgnoreCase("randomitembattle")) return filter(args[1], Arrays.asList("listitems", "listpoints", "blockitem"));
             if (args.length == 3 && args[1].equalsIgnoreCase("blockitem")) {
                 return Arrays.stream(Material.values()).filter(Material::isItem).map(Material::name).map(String::toLowerCase)
