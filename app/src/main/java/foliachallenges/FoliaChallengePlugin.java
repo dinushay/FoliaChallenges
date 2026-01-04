@@ -30,6 +30,7 @@ import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -77,14 +78,11 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         saveDefaultItemBlacklist();
         config = getConfig();
 
-        // --- WORLD RESET LOGIC START ---
-        if (config.getBoolean("do-world-reset", false)) {
-            getLogger().info("World Reset detected! Deleting worlds...");
-            performWorldReset();
-            config.set("do-world-reset", false);
-            saveConfig();
-        }
-        // --- WORLD RESET LOGIC END ---
+        // --- CLEANUP LOGIC START ---
+        // Lösche alte Welten, die beim letzten Reset markiert wurden
+        // Da wir jetzt in einer neuen Welt sind, sind die alten Ordner inaktiv und können gelöscht werden.
+        cleanupOldWorlds();
+        // --- CLEANUP LOGIC END ---
 
         messages = YamlConfiguration.loadConfiguration(new File(getDataFolder(), "messages.yml"));
         loadConfigurableBlacklist();
@@ -92,7 +90,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         
         registerCommand("challenges");
         registerCommand("timer");
-        registerCommand("reset"); // Neuer Befehl registriert
+        registerCommand("reset");
         registerCommand("resume");
         registerCommand("start");
         
@@ -106,40 +104,87 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         loadData();
     }
 
-    // --- World Reset Methods ---
-    private void prepareWorldReset(CommandSender sender) {
-        config.set("do-world-reset", true);
-        saveConfig();
+    // --- World Reset & Cleanup Methods ---
+    
+    private void cleanupOldWorlds() {
+        List<String> worldsToDelete = config.getStringList("worlds-to-delete");
+        if (worldsToDelete == null || worldsToDelete.isEmpty()) return;
 
+        getLogger().info("Cleaning up old world folders...");
+        List<String> keptWorlds = new ArrayList<>();
+
+        for (String worldName : worldsToDelete) {
+            // Sicherstellen, dass wir nicht versehentlich die AKTUELLE Welt löschen
+            String currentLevelName = getMainLevelName();
+            if (worldName.equals(currentLevelName)) {
+                getLogger().warning("Skipping deletion of " + worldName + " because it is currently active!");
+                continue;
+            }
+
+            // Standard Folia/Bukkit Ordner löschen (world, world_nether, world_the_end)
+            deleteWorldFolder(new File(getServer().getWorldContainer(), worldName));
+            deleteWorldFolder(new File(getServer().getWorldContainer(), worldName + "_nether"));
+            deleteWorldFolder(new File(getServer().getWorldContainer(), worldName + "_the_end"));
+        }
+
+        // Config bereinigen
+        config.set("worlds-to-delete", keptWorlds);
+        saveConfig();
+    }
+
+    private void prepareWorldReset(CommandSender sender) {
         String kickMsg = messages.getString("reset-kick-message", "§cDer Server wird zurückgesetzt!\n§eNeustart in Kürze...");
         for (Player p : Bukkit.getOnlinePlayers()) {
             p.kickPlayer(kickMsg);
         }
 
-        sender.sendMessage("§aReset eingeleitet. Server fährt herunter...");
+        sender.sendMessage("§aReset eingeleitet. Welt wird rotiert und Seed erneuert...");
 
-        // Shutdown statt Restart (Hoster startet neu)
+        try {
+            // WICHTIG: Hier ändern wir die server.properties für den NÄCHSTEN Start
+            rotateWorldAndResetSeed();
+        } catch (Exception e) {
+            sender.sendMessage("§cFehler beim Ändern der server.properties: " + e.getMessage());
+            e.printStackTrace();
+            return;
+        }
+
+        // Shutdown nach kurzer Verzögerung
         getServer().getGlobalRegionScheduler().runDelayed(this, task -> {
             Bukkit.shutdown();
         }, 20L); 
     }
 
-    private void performWorldReset() {
-        String levelName = getMainLevelName(); 
+    private void rotateWorldAndResetSeed() throws IOException {
+        File propFile = new File("server.properties");
+        Properties props = new Properties();
         
-        List<String> worldsToDelete = Arrays.asList(
-            levelName,
-            levelName + "_nether",
-            levelName + "_the_end"
-        );
-
-        for (String worldName : worldsToDelete) {
-            File worldFolder = new File(getServer().getWorldContainer(), worldName);
-            if (worldFolder.exists()) {
-                getLogger().info("Deleting world folder: " + worldName);
-                deleteWorldFolder(worldFolder);
-            }
+        try (InputStream in = new FileInputStream(propFile)) {
+            props.load(in);
         }
+
+        String oldLevelName = props.getProperty("level-name", "world");
+        
+        // Generiere neuen Namen (z.B. "world_1704382910")
+        // Das zwingt den Server, einen neuen Ordner zu erstellen -> Neue Map!
+        String newLevelName = "world_" + (System.currentTimeMillis() / 1000);
+        
+        props.setProperty("level-name", newLevelName);
+        props.setProperty("level-seed", ""); // Seed leeren, damit ein neuer zufälliger generiert wird
+
+        try (FileOutputStream out = new FileOutputStream(propFile)) {
+            props.store(out, "Minecraft server properties - Modified by FoliaChallenges Reset");
+        }
+        
+        // Merke den alten Namen, um ihn beim nächsten Start zu löschen
+        List<String> toDelete = config.getStringList("worlds-to-delete");
+        if (!toDelete.contains(oldLevelName)) {
+            toDelete.add(oldLevelName);
+        }
+        config.set("worlds-to-delete", toDelete);
+        saveConfig();
+        
+        getLogger().info("World rotation set: " + oldLevelName + " -> " + newLevelName);
     }
 
     private String getMainLevelName() {
@@ -148,29 +193,27 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             prop.load(input);
             return prop.getProperty("level-name", "world");
         } catch (IOException ex) {
-            getLogger().warning("Could not read server.properties, defaulting to 'world'");
             return "world";
         }
     }
 
     private void deleteWorldFolder(File folder) {
+        if (!folder.exists()) return;
+        
+        getLogger().info("Deleting inactive world folder: " + folder.getName());
         Path rootPath = folder.toPath();
-        if (!Files.exists(rootPath)) return;
 
         try (Stream<Path> walk = Files.walk(rootPath)) {
             walk.sorted(Comparator.reverseOrder()) 
                 .forEach(path -> {
                     try {
-                        if (path.endsWith("session.lock")) {
-                            return; 
-                        }
                         Files.delete(path);
                     } catch (IOException e) {
-                        getLogger().log(Level.WARNING, "Failed to delete: " + path + " (" + e.getMessage() + ")");
+                        getLogger().log(Level.WARNING, "Failed to delete: " + path);
                     }
                 });
         } catch (IOException e) {
-            getLogger().log(Level.SEVERE, "Error walking world directory: " + folder.getName(), e);
+            getLogger().log(Level.SEVERE, "Error walking directory: " + folder.getName(), e);
         }
     }
     // ---------------------------
@@ -340,7 +383,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                 prepareWorldReset(sender);
             } else {
                 sender.sendMessage("§4§lACHTUNG: §cDieser Befehl löscht alle Challenge-Daten");
-                sender.sendMessage("§cund §lsetzt die Welt zurück§c!");
+                sender.sendMessage("§cund §lgeneriert eine neue Welt§c!");
                 sender.sendMessage("§7Nutze §c/reset confirm §7um fortzufahren.");
             }
             return true;
@@ -350,8 +393,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         if (cmdName.equals("challenges")) {
             if (args.length > 0) {
                 String subCmd = args[0].toLowerCase();
-                
-                // HIER: Reset aus dem Challenges-Befehl entfernt
                 
                 if (subCmd.equals("randomitembattle")) {
                     if (args.length < 2) return sendUsage(sender, label);
@@ -410,7 +451,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     }
 
     private boolean sendUsage(CommandSender sender, String label) {
-        // Usage Hinweis angepasst
         sender.sendMessage(messages.getString("usage-randomitembattle", "Usage: /" + label + " randomitembattle <listitems|listpoints|blockitem>").replace("%command%", label));
         return true;
     }
@@ -419,13 +459,11 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         String cmdName = command.getName().toLowerCase();
         
-        // TabComplete für neuen Befehl
         if (cmdName.equals("reset")) {
             if (args.length == 1) return filter(args[0], Arrays.asList("confirm"));
         }
 
         if (cmdName.equals("challenges")) {
-            // "reset" hier entfernt
             if (args.length == 1) return filter(args[0], Arrays.asList("randomitembattle"));
             if (args.length == 2 && args[0].equalsIgnoreCase("randomitembattle")) return filter(args[1], Arrays.asList("listitems", "listpoints", "blockitem"));
             if (args.length == 3 && args[1].equalsIgnoreCase("blockitem")) {
