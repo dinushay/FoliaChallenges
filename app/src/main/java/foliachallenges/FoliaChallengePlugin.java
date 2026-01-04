@@ -32,18 +32,15 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCompleter {
 
@@ -58,6 +55,9 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     private ScheduledTask saveTask;
     private GlobalRegionScheduler scheduler;
     
+    // Referenz zum Reset Manager
+    private WorldResetManager resetManager;
+
     private List<Material> configurableBlacklist = new ArrayList<>();
     private List<Material> hardcodedBlacklist = Arrays.asList(Material.AIR);
     
@@ -77,6 +77,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         loadConfigurableBlacklist();
         getServer().getPluginManager().registerEvents(this, this);
         
+        // Commands
         registerCommand("challenges");
         registerCommand("timer");
         registerCommand("resume");
@@ -88,8 +89,12 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         this.scheduler = getServer().getGlobalRegionScheduler();
         scheduler.run(this, task -> pauseWorlds());
         
+        // Reset Manager initialisieren
+        this.resetManager = new WorldResetManager(this);
+        this.resetManager.checkResetStatus();
+
+        // Tasks
         actionBarTask = scheduler.runAtFixedRate(this, task -> updateActionBar(), 1, 10);
-        
         loadData();
     }
 
@@ -102,17 +107,15 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     @Override
     public void onDisable() {
         itemDisplays.clear();
-        
         if (actionBarTask != null) actionBarTask.cancel();
         if (timerTask != null) timerTask.cancel();
         if (saveTask != null) saveTask.cancel();
-        
         saveData();
         getLogger().info("FoliaChallenge disabled!");
     }
 
-    // --- Helper für Nachrichten ---
-    private String getMessage(String key, String def) {
+    // Public Methode für den Manager Zugriff auf Messages
+    public String getMessage(String key, String def) {
         return messages.getString(key, def).replace("&", "§");
     }
 
@@ -140,7 +143,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         if (!available.isEmpty()) {
             Material random = available.get(new Random().nextInt(available.size()));
             assignedItems.put(player.getUniqueId(), random);
-            
             createItemDisplay(player, random);
             updateBossBar(player);
             saveData();
@@ -203,6 +205,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         return sb.toString();
     }
 
+    // --- Config Helpers ---
     private void saveDefaultMessages() { copyResource("messages.yml"); }
     private void saveDefaultItemBlacklist() { copyResource("items-blacklist.yml"); }
     private void copyResource(String filename) {
@@ -234,37 +237,31 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         String cmdName = command.getName().toLowerCase();
         
-        // --- RESET LOGIK ---
+        // --- RESET COMMAND ---
         if (cmdName.equals("reset")) {
             if (!sender.hasPermission("foliachallenge.reset")) {
-                sender.sendMessage(getMessage("no-permission", "Du hast keine Berechtigung dafür!"));
+                sender.sendMessage(getMessage("no-permission", "§cKeine Rechte!"));
                 return true;
             }
 
+            // Prüfung auf "confirm"
             if (args.length == 0 || !args[0].equalsIgnoreCase("confirm")) {
-                // Sende die konfigurierten Warn-Nachrichten
                 List<String> warningLines = messages.getStringList("reset-warning-lines");
-                if (warningLines.isEmpty()) {
-                    // Fallback, falls config leer ist
-                    sender.sendMessage("§8§m---------------------------------------------");
-                    sender.sendMessage("§c§lWARNUNG: §7Du bist dabei, die gesamte Challenge zu resetten.");
-                    sender.sendMessage("§4§lDIES LÖSCHT DIE GANZE WELT!");
-                    sender.sendMessage("");
-                    sender.sendMessage("§7Bitte bestätige diesen Vorgang mit:");
-                    sender.sendMessage("§6/reset confirm");
-                    sender.sendMessage("§8§m---------------------------------------------");
+                if (warningLines == null || warningLines.isEmpty()) {
+                    sender.sendMessage("§c§lWARNUNG: §7Dies löscht die Welt!");
+                    sender.sendMessage("§7Bestätige mit: §6/reset confirm");
                 } else {
-                    for (String line : warningLines) {
-                        sender.sendMessage(line.replace("&", "§"));
-                    }
+                    for (String line : warningLines) sender.sendMessage(line.replace("&", "§"));
                 }
                 return true;
             }
 
-            performFullReset(sender);
+            // RESET DURCHFÜHREN (via Manager)
+            resetManager.initiateReset(sender);
             return true;
         }
 
+        // --- Andere Commands ---
         if (!sender.hasPermission("foliachallenge.timer")) {
             sender.sendMessage(getMessage("no-permission", "Du hast keine Berechtigung dafür!"));
             return true;
@@ -280,7 +277,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                 String subCmd = args[0].toLowerCase();
                 
                 if (subCmd.equals("reset")) {
-                    resetChallengeData(sender); 
+                    resetChallengeData(sender); // Soft-Reset (nur Punkte)
                     return true;
                 }
                 if (subCmd.equals("randomitembattle")) {
@@ -368,59 +365,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         return options.stream().filter(s -> s.toLowerCase().startsWith(arg.toLowerCase())).collect(Collectors.toList());
     }
 
-    // --- RESET FUNKTIONALITÄT ---
-
-    private void performFullReset(CommandSender sender) {
-        if (timerRunning) {
-            timerRunning = false;
-            if (timerTask != null) timerTask.cancel();
-            if (saveTask != null) saveTask.cancel();
-        }
-
-        scores.clear();
-        assignedItems.clear();
-        remainingSeconds = 0;
-        timerSet = false;
-        
-        saveData();
-
-        sender.sendMessage(getMessage("reset-success-sender", "§aDaten wurden zurückgesetzt."));
-        getServer().broadcastMessage(getMessage("reset-broadcast-warning", "§4§lACHTUNG: §cDie Welt wird in 5 Sekunden gelöscht und der Server stoppt!"));
-
-        scheduler.runDelayed(this, task -> {
-            for (Player p : Bukkit.getOnlinePlayers()) {
-                p.kickPlayer(getMessage("reset-kick-message", "§cWelt-Reset wird durchgeführt!\n§eDer Server startet gleich neu."));
-            }
-
-            getLogger().info("Starting world deletion process...");
-            deleteWorldFolder("world");
-            deleteWorldFolder("world_nether");
-            deleteWorldFolder("world_the_end");
-            getLogger().info("World files deleted (best effort). Shutting down.");
-            Bukkit.shutdown();
-
-        }, 100L); 
-    }
-
-    private void deleteWorldFolder(String worldName) {
-        File worldFolder = new File(Bukkit.getWorldContainer(), worldName);
-        if (worldFolder.exists()) {
-            deleteDirectoryRecursively(worldFolder.toPath());
-        }
-    }
-
-    private void deleteDirectoryRecursively(Path path) {
-        try (Stream<Path> walk = Files.walk(path)) {
-            walk.sorted(Comparator.reverseOrder())
-                .map(Path::toFile)
-                .forEach(file -> {
-                    try { file.delete(); } catch (Exception ignored) {}
-                });
-        } catch (IOException e) {
-            getLogger().warning("Could not fully delete world folder: " + path.toString());
-        }
-    }
-
     // --- Timer Logic ---
     private void startTimer(CommandSender sender) {
         if (!timerSet) {
@@ -462,6 +406,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         updateActionBar();
     }
     
+    // Soft Reset (Nur Daten, keine Welt)
     private void resetChallengeData(CommandSender sender) {
         if (timerRunning) stopTimer(sender);
         scores.clear();
