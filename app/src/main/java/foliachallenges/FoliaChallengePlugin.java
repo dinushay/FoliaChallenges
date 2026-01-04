@@ -114,20 +114,33 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         List<String> keptWorlds = new ArrayList<>();
 
         for (String worldName : worldsToDelete) {
-            // Sicherstellen, dass wir nicht versehentlich die AKTUELLE Welt löschen
             String currentLevelName = getMainLevelName();
+
+            // FIX 1: Wenn die Welt aktiv ist, müssen wir sie in der Liste BEHALTEN
             if (worldName.equals(currentLevelName)) {
-                getLogger().warning("Skipping deletion of " + worldName + " because it is currently active!");
+                getLogger().warning("Skipping deletion of " + worldName + " because it is currently active! It will be queued for the next restart.");
+                keptWorlds.add(worldName); // <--- Das fehlte vorher!
                 continue;
             }
 
-            // Standard Folia/Bukkit Ordner löschen (world, world_nether, world_the_end)
-            deleteWorldFolder(new File(getServer().getWorldContainer(), worldName));
-            deleteWorldFolder(new File(getServer().getWorldContainer(), worldName + "_nether"));
-            deleteWorldFolder(new File(getServer().getWorldContainer(), worldName + "_the_end"));
+            File worldFolder = new File(getServer().getWorldContainer(), worldName);
+            File netherFolder = new File(getServer().getWorldContainer(), worldName + "_nether");
+            File endFolder = new File(getServer().getWorldContainer(), worldName + "_the_end");
+
+            // Löschversuche
+            deleteWorldFolder(worldFolder);
+            deleteWorldFolder(netherFolder);
+            deleteWorldFolder(endFolder);
+            
+            // FIX 2: Prüfen, ob das Löschen erfolgreich war. 
+            // Falls der Ordner noch existiert (z.B. Permission Error), in der Liste behalten!
+            if (worldFolder.exists()) {
+                getLogger().warning("Failed to fully delete " + worldName + ". Keeping it in queue.");
+                keptWorlds.add(worldName);
+            }
         }
 
-        // Config bereinigen
+        // Aktualisierte Liste speichern
         config.set("worlds-to-delete", keptWorlds);
         saveConfig();
     }
