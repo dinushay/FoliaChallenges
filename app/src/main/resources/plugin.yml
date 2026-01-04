@@ -10,9 +10,6 @@ commands:
     description: Manage the challenge timer
   timer:
     description: Manage the challenge timer (alias for /challenges)
-  resume:
-    description: Resume the challenge timer
-    usage: /<command> <start|stop|setcountdown|resume> [minutes]
   start:
     description: Start the timer
     usage: /<command>

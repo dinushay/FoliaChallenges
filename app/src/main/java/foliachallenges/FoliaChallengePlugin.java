@@ -91,7 +91,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         registerCommand("challenges");
         registerCommand("timer");
         registerCommand("reset");
-        registerCommand("resume");
         registerCommand("start");
         
         getLogger().info(messages.getString("plugin-enabled", "FoliaChallenge enabled!"));
@@ -379,7 +378,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             return true;
         }
 
-        if (cmdName.equals("resume") || cmdName.equals("start")) {
+        if (cmdName.equals("start")) {
             startTimer(sender);
             return true;
         }
