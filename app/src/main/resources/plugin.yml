@@ -10,13 +10,13 @@ commands:
     description: Manage the challenge timer
     aliases: [challenge]
   timer:
-    description: Manage the challenge timer
+    description: Manage the challenge timer (alias for /challenges)
   resume:
     description: Resume the challenge timer
   start:
     description: Start the timer
     usage: /<command>
   reset:
-    description: Resets the challenge and the world
+    description: Löscht alle Daten und die Welt!
     usage: /reset confirm
     permission: foliachallenges.reset
