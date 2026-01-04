@@ -16,13 +16,3 @@ commands:
   reset:
     description: Reset the world
     usage: /<command> <confirm>
-permissions:
-  foliachallenge.timer:
-    description: Allows access to timer and challenge commands
-    default: op
-  foliachallenge.reset:
-    description: Allows resetting the world
-    default: op
-  foliachallenge.admin:
-    description: Allows administrative actions like blocking items
-    default: op
