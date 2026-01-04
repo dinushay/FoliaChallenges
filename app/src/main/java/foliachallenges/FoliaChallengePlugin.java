@@ -372,6 +372,11 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     // --- Commands ---
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (!sender.isOp() && !sender.hasPermission("foliachallenges.admin")) {
+            sender.sendMessage(PREFIX + messages.getString("no-permission", "§cYou don't have permission to use this command."));
+            return true;
+        }
+        
         String cmdName = command.getName().toLowerCase();
 
         if (cmdName.equals("start")) {
