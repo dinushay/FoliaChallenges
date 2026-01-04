@@ -837,16 +837,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     }
 
     private void sendHelp(CommandSender sender) {
-        String help = PREFIX + "§6§l=== FoliaChallenges Help ===\n" +
-                      PREFIX + "§e/timer start §7- Start the challenge timer\n" +
-                      PREFIX + "§e/timer stop §7- Stop the challenge timer\n" +
-                      PREFIX + "§e/timer set <minutes> §7- Set the timer duration\n" +
-                      PREFIX + "§e/challenges randomitembattle listitems §7- List assigned items\n" +
-                      PREFIX + "§e/challenges randomitembattle listpoints §7- List player points\n" +
-                      PREFIX + "§e/challenges randomitembattle blockitem <item> §7- Block an item\n" +
-                      PREFIX + "§e/challenges reload §7- Reload config and messages\n" +
-                      PREFIX + "§e/reset confirm §7- Reset the world (use with caution)\n" +
-                      PREFIX + "§6§l========================";
-        sender.sendMessage(help);
+        sender.sendMessage(PREFIX + messages.getString("help-message", "§6§l=== FoliaChallenges Help ===\n§e/timer start §7- Start the challenge timer\n§e/timer stop §7- Stop the challenge timer\n§e/timer set <minutes> §7- Set the timer duration\n§e/challenges randomitembattle listitems §7- List assigned items\n§e/challenges randomitembattle listpoints §7- List player points\n§e/challenges randomitembattle blockitem <item> §7- Block an item\n§e/challenges reload §7- Reload config and messages\n§e/reset confirm §7- Reset the world (use with caution)\n§6§l========================"));
     }
 }

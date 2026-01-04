@@ -63,3 +63,14 @@ save-data-error: "Could not save data.yml"
 copy-resource-error: "Could not copy resource %filename%"
 invalid-blacklist-material: "Invalid material in blacklist: %item%"
 help-hint: "Use /challenges help for command list"
+help-message: |
+  §6§l=== FoliaChallenges Help ===
+  §e/timer start §7- Start the challenge timer
+  §e/timer stop §7- Stop the challenge timer
+  §e/timer set <minutes> §7- Set the timer duration
+  §e/challenges randomitembattle listitems §7- List assigned items
+  §e/challenges randomitembattle listpoints §7- List player points
+  §e/challenges randomitembattle blockitem <item> §7- Block an item
+  §e/challenges reload §7- Reload config and messages
+  §e/reset confirm §7- Reset the world (use with caution)
+  §6§l========================
