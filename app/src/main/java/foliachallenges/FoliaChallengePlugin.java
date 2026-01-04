@@ -374,11 +374,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         String cmdName = command.getName().toLowerCase();
-        
-        if (!sender.hasPermission("foliachallenge.timer")) {
-            sender.sendMessage(PREFIX + messages.getString("no-permission", "You do not have permission for that!"));
-            return true;
-        }
 
         if (cmdName.equals("start")) {
             startTimer(sender);
@@ -387,11 +382,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
 
         // --- RESET COMMAND START ---
         if (cmdName.equals("reset")) {
-            if (!sender.hasPermission("foliachallenge.reset") && !sender.hasPermission("foliachallenge.admin")) {
-                sender.sendMessage(PREFIX + messages.getString("no-permission", "You do not have permission for that!"));
-                return true;
-            }
-
             if (args.length == 1 && args[0].equalsIgnoreCase("confirm")) {
                 resetChallengeData(sender);
                 prepareWorldReset(sender);
@@ -446,7 +436,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             String subCommand = args[0].toLowerCase();
             switch (subCommand) {
                 case "start":
-                case "resume":
                     startTimer(sender);
                     break;
                 case "stop":
@@ -486,14 +475,16 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         }
 
         if (cmdName.equals("challenges")) {
-            if (args.length == 1) return filter(args[0], Arrays.asList("randomitembattle", "reload", "help"));
+            if (args.length == 1 && sender.hasPermission("foliachallenge.timer")) return filter(args[0], Arrays.asList("randomitembattle", "reload", "help"));
             if (args.length == 2 && args[0].equalsIgnoreCase("randomitembattle")) return filter(args[1], Arrays.asList("listitems", "listpoints", "blockitem"));
             if (args.length == 3 && args[1].equalsIgnoreCase("blockitem")) {
                 return Arrays.stream(Material.values()).filter(Material::isItem).map(Material::name).map(String::toLowerCase)
                         .filter(n -> n.startsWith(args[2].toLowerCase())).collect(Collectors.toList());
             }
         } else if (cmdName.equals("timer") && args.length == 1) {
-            return filter(args[0], Arrays.asList("start", "stop", "set", "resume"));
+            if (sender.hasPermission("foliachallenge.timer")) {
+                return filter(args[0], Arrays.asList("start", "stop", "set"));
+            }
         }
         return Collections.emptyList();
     }
@@ -573,6 +564,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         }
         
         sender.sendMessage(PREFIX + messages.getString("timer-stopped", "Timer gestoppt!"));
+        getServer().broadcastMessage(PREFIX + messages.getString("timer-stopped-global", "The challenge timer has been stopped!"));
         updateActionBar();
         saveData();
     }
