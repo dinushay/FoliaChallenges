@@ -51,7 +51,7 @@ import java.util.stream.Stream;
 
 public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCompleter {
 
-    private static final String PREFIX = "§8§l┃ §5FoliaChallenges §8┃§7 ";
+    private static final String PREFIX = "§8§l┃ §bFoliaChallenges §8┃§7 ";
 
     private FileConfiguration config;
     private FileConfiguration messages;
@@ -425,6 +425,11 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                         blockItem(sender, args[2]);
                         return true;
                     }
+                } else if (subCmd.equals("reload")) {
+                    reloadConfig();
+                    messages = YamlConfiguration.loadConfiguration(new File(getDataFolder(), "messages.yml"));
+                    sender.sendMessage(PREFIX + "Configuration and messages reloaded!");
+                    return true;
                 }
             }
             return sendUsage(sender, label);
@@ -478,7 +483,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         }
 
         if (cmdName.equals("challenges")) {
-            if (args.length == 1) return filter(args[0], Arrays.asList("randomitembattle"));
+            if (args.length == 1) return filter(args[0], Arrays.asList("randomitembattle", "reload"));
             if (args.length == 2 && args[0].equalsIgnoreCase("randomitembattle")) return filter(args[1], Arrays.asList("listitems", "listpoints", "blockitem"));
             if (args.length == 3 && args[1].equalsIgnoreCase("blockitem")) {
                 return Arrays.stream(Material.values()).filter(Material::isItem).map(Material::name).map(String::toLowerCase)
