@@ -79,8 +79,8 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         config = getConfig();
 
         // --- CLEANUP LOGIC START ---
-        // Lösche alte Welten, die beim letzten Reset markiert wurden
-        // Da wir jetzt in einer neuen Welt sind, sind die alten Ordner inaktiv und können gelöscht werden.
+        // Delete old worlds that were marked for deletion during the last reset
+        // Since we are now in a new world, the old folders are inactive and can be deleted.
         cleanupOldWorlds();
         // --- CLEANUP LOGIC END ---
 
@@ -94,7 +94,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         registerCommand("resume");
         registerCommand("start");
         
-        getLogger().info("FoliaChallenge enabled!");
+        getLogger().info(messages.getString("plugin-enabled", "FoliaChallenge enabled!"));
         
         this.scheduler = getServer().getGlobalRegionScheduler();
         scheduler.run(this, task -> pauseWorlds());
@@ -110,16 +110,16 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         List<String> worldsToDelete = config.getStringList("worlds-to-delete");
         if (worldsToDelete == null || worldsToDelete.isEmpty()) return;
 
-        getLogger().info("Cleaning up old world folders...");
+        getLogger().info(messages.getString("cleanup-start", "Cleaning up old world folders..."));
         List<String> keptWorlds = new ArrayList<>();
 
         for (String worldName : worldsToDelete) {
             String currentLevelName = getMainLevelName();
 
-            // FIX 1: Wenn die Welt aktiv ist, müssen wir sie in der Liste BEHALTEN
+            // FIX 1: If the world is active, we must KEEP it in the list
             if (worldName.equals(currentLevelName)) {
-                getLogger().warning("Skipping deletion of " + worldName + " because it is currently active! It will be queued for the next restart.");
-                keptWorlds.add(worldName); // <--- Das fehlte vorher!
+                getLogger().warning(messages.getString("cleanup-skip-active", "Skipping deletion of %world% because it is currently active! It will be queued for the next restart.").replace("%world%", worldName));
+                keptWorlds.add(worldName); // <--- That was missing before!
                 continue;
             }
 
@@ -132,10 +132,10 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             deleteWorldFolder(netherFolder);
             deleteWorldFolder(endFolder);
             
-            // FIX 2: Prüfen, ob das Löschen erfolgreich war. 
-            // Falls der Ordner noch existiert (z.B. Permission Error), in der Liste behalten!
+            // FIX 2: Check if the deletion was successful. 
+            // If the folder still exists (e.g. Permission Error), keep it in the list!
             if (worldFolder.exists()) {
-                getLogger().warning("Failed to fully delete " + worldName + ". Keeping it in queue.");
+                getLogger().warning(messages.getString("cleanup-delete-failed", "Failed to fully delete %world%. Keeping it in queue.").replace("%world%", worldName));
                 keptWorlds.add(worldName);
             }
         }
@@ -151,13 +151,13 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             p.kickPlayer(kickMsg);
         }
 
-        sender.sendMessage("§aReset eingeleitet. Welt wird rotiert und Seed erneuert...");
+        sender.sendMessage(messages.getString("reset-initiated", "§aReset initiated. World will be rotated and seed renewed..."));
 
         try {
-            // WICHTIG: Hier ändern wir die server.properties für den NÄCHSTEN Start
+            // IMPORTANT: Here we change the server.properties for the NEXT start
             rotateWorldAndResetSeed();
         } catch (Exception e) {
-            sender.sendMessage("§cFehler beim Ändern der server.properties: " + e.getMessage());
+            sender.sendMessage(messages.getString("reset-error-properties", "§cError modifying server.properties: %error%").replace("%error%", e.getMessage()));
             e.printStackTrace();
             return;
         }
@@ -189,7 +189,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             props.store(out, "Minecraft server properties - Modified by FoliaChallenges Reset");
         }
         
-        // Merke den alten Namen, um ihn beim nächsten Start zu löschen
+        // Remember the old name to delete it on the next start
         List<String> toDelete = config.getStringList("worlds-to-delete");
         if (!toDelete.contains(oldLevelName)) {
             toDelete.add(oldLevelName);
@@ -213,7 +213,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     private void deleteWorldFolder(File folder) {
         if (!folder.exists()) return;
         
-        getLogger().info("Deleting inactive world folder: " + folder.getName());
+        getLogger().info(messages.getString("cleanup-deleting-folder", "Deleting inactive world folder: %folder%").replace("%folder%", folder.getName()));
         Path rootPath = folder.toPath();
 
         try (Stream<Path> walk = Files.walk(rootPath)) {
@@ -222,11 +222,11 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                     try {
                         Files.delete(path);
                     } catch (IOException e) {
-                        getLogger().log(Level.WARNING, "Failed to delete: " + path);
+                        getLogger().log(Level.WARNING, messages.getString("cleanup-delete-path-failed", "Failed to delete: %path%").replace("%path%", path.toString()));
                     }
                 });
         } catch (IOException e) {
-            getLogger().log(Level.SEVERE, "Error walking directory: " + folder.getName(), e);
+            getLogger().log(Level.SEVERE, messages.getString("cleanup-walk-error", "Error walking directory: %folder%").replace("%folder%", folder.getName()), e);
         }
     }
     // ---------------------------
@@ -246,7 +246,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         if (saveTask != null) saveTask.cancel();
         
         saveData();
-        getLogger().info("FoliaChallenge disabled!");
+        getLogger().info(messages.getString("plugin-disabled", "FoliaChallenge disabled!"));
     }
 
     private void pauseWorlds() {
@@ -350,7 +350,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         if (!file.exists()) {
             try (InputStream in = getResource(filename)) {
                 if (in != null) Files.copy(in, file.toPath());
-            } catch (IOException e) { getLogger().log(java.util.logging.Level.SEVERE, "Could not copy resource " + filename, e); }
+            } catch (IOException e) { getLogger().log(java.util.logging.Level.SEVERE, messages.getString("copy-resource-error", "Could not copy resource %filename%").replace("%filename%", filename), e); }
         }
     }
 
@@ -363,7 +363,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                 try {
                     configurableBlacklist.add(Material.valueOf(item.toUpperCase()));
                 } catch (IllegalArgumentException e) {
-                    getLogger().warning("Invalid material in blacklist: " + item);
+                    getLogger().warning(messages.getString("invalid-blacklist-material", "Invalid material in blacklist: %item%").replace("%item%", item));
                 }
             }
         }
@@ -384,7 +384,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             return true;
         }
 
-        // --- RESET BEFEHL START ---
+        // --- RESET COMMAND START ---
         if (cmdName.equals("reset")) {
             if (!sender.hasPermission("foliachallenge.reset") && !sender.hasPermission("foliachallenge.admin")) {
                 sender.sendMessage(messages.getString("no-permission", "Du hast keine Berechtigung dafür!"));
@@ -395,13 +395,13 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                 resetChallengeData(sender);
                 prepareWorldReset(sender);
             } else {
-                sender.sendMessage("§4§lACHTUNG: §cDieser Befehl löscht alle Challenge-Daten");
-                sender.sendMessage("§cund §lgeneriert eine neue Welt§c!");
-                sender.sendMessage("§7Nutze §c/reset confirm §7um fortzufahren.");
+                sender.sendMessage(messages.getString("reset-warning-1", "§4§lWARNING: §cThis command deletes all challenge data"));
+                sender.sendMessage(messages.getString("reset-warning-2", "§cand §lgenerates a new world§c!"));
+                sender.sendMessage(messages.getString("reset-confirm-usage", "§7Use §c/reset confirm §7to proceed."));
             }
             return true;
         }
-        // --- RESET BEFEHL END ---
+        // --- RESET COMMAND END ---
 
         if (cmdName.equals("challenges")) {
             if (args.length > 0) {
@@ -418,7 +418,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                         return true;
                     } else if (args[1].equalsIgnoreCase("blockitem")) {
                         if (args.length < 3) {
-                            sender.sendMessage("Usage: /" + label + " randomitembattle blockitem <item>");
+                            sender.sendMessage(messages.getString("usage-blockitem", "Usage: /%command% randomitembattle blockitem <item>").replace("%command%", label));
                             return true;
                         }
                         blockItem(sender, args[2]);
@@ -545,7 +545,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             updateBossBar(p);
         }
         saveData();
-        sender.sendMessage("§cChallenge-Daten (Scores & Items) wurden zurückgesetzt!");
+        sender.sendMessage(messages.getString("reset-data-cleared", "§cChallenge data (Scores & Items) have been reset!"));
     }
 
     private void stopTimer(CommandSender sender) {
@@ -630,25 +630,25 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     }
 
     private void listItems(CommandSender sender) {
-        sender.sendMessage("§6§l=== Assigned Items ===");
+        sender.sendMessage(messages.getString("assigned-items-title", "=== Assigned Items ==="));
         assignedItems.forEach((uuid, mat) -> {
             Player p = Bukkit.getPlayer(uuid);
             if (p != null) {
-                 sender.sendMessage("§f" + p.getName() + " §7- §a" + formatItemName(mat.name()));
+                 sender.sendMessage(messages.getString("list-item-entry", "%player% - %item%").replace("%player%", p.getName()).replace("%item%", formatItemName(mat.name())));
             }
         });
-        sender.sendMessage("§6§l===================");
+        sender.sendMessage(messages.getString("color-separator", "§6§l==================="));
     }
 
     private void listPoints(CommandSender sender) {
-        sender.sendMessage("§6§l=== Player Points ===");
+        sender.sendMessage(messages.getString("player-points-title", "=== Player Points ==="));
         scores.forEach((uuid, points) -> {
              Player p = Bukkit.getPlayer(uuid);
              if (p != null && points > 0) {
-                 sender.sendMessage("§f" + p.getName() + " §7- §a" + points + " Punkte");
+                 sender.sendMessage(messages.getString("list-points-entry", "%player% - %points% Punkte").replace("%player%", p.getName()).replace("%points%", String.valueOf(points)));
              }
         });
-        sender.sendMessage("§6§l===================");
+        sender.sendMessage(messages.getString("color-separator", "§6§l==================="));
     }
 
     private void blockItem(CommandSender sender, String itemName) {
@@ -659,7 +659,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         try {
             Material material = Material.valueOf(itemName.toUpperCase());
             if (configurableBlacklist.contains(material)) {
-                sender.sendMessage("§cBereits geblacklistet!");
+                sender.sendMessage(messages.getString("item-already-blacklisted", "§cAlready blacklisted!"));
                 return;
             }
             configurableBlacklist.add(material);
@@ -669,7 +669,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                     Player p = Bukkit.getPlayer(entry.getKey());
                     if (p != null) {
                         assignRandomItem(p);
-                        p.sendMessage("§eDein Item wurde geblacklistet. Neues Item erhalten!");
+                        p.sendMessage(messages.getString("item-blacklisted-reassigned", "§eDas Item %item% wurde geblacklistet. Du hast ein neues Item zugewiesen bekommen!").replace("%item%", material.name()));
                     } else {
                         assignedItems.remove(entry.getKey());
                     }
@@ -682,13 +682,13 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             list.add(material.name());
             c.set("blacklisted-items", list);
             c.save(f);
-            sender.sendMessage("§aItem geblacklistet!");
+            sender.sendMessage(messages.getString("item-blacklisted", "§aItem blacklisted!"));
             
             if (config.getBoolean("share-blacklisted-items-to-developer", true)) {
-                sendDiscordWebhook("Item-blacklist: " + material.name());
+                sendDiscordWebhook(messages.getString("discord-blacklist-message", "Item-blacklist: %item%").replace("%item%", material.name()));
             }
         } catch (Exception e) {
-            sender.sendMessage("§cFehler: " + e.getMessage());
+            sender.sendMessage(messages.getString("block-item-error", "§cError: %error%").replace("%error%", e.getMessage()));
         }
     }
     
@@ -803,7 +803,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             
             data.save(dataFile);
         } catch (IOException ex) {
-            getLogger().severe("Could not save data.yml");
+            getLogger().severe(messages.getString("save-data-error", "Could not save data.yml"));
         }
     }
 
