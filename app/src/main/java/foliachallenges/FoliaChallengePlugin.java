@@ -563,8 +563,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             updateBossBar(p);
         }
         
-        sender.sendMessage(PREFIX + messages.getString("timer-stopped", "Timer gestoppt!"));
-        getServer().broadcastMessage(PREFIX + messages.getString("timer-stopped-global", "The challenge timer has been stopped!"));
+        getServer().broadcastMessage(PREFIX + messages.getString("timer-stopped-global", "§cDer Challenge-Timer wurde gestoppt!"));
         updateActionBar();
         saveData();
     }
