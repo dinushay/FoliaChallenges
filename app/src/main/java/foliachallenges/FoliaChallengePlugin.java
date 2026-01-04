@@ -429,7 +429,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
 
         if (cmdName.equals("timer")) {
             if (args.length == 0) {
-                sender.sendMessage(messages.getString("usage", "Use /challenges help for command list"));
+                sender.sendMessage(PREFIX + messages.getString("usage", "Use /challenges help for command list"));
                 return true;
             }
             String subCommand = args[0].toLowerCase();
