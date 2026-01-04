@@ -1,11 +1,11 @@
 package foliachallenges;
 
 import org.bukkit.Bukkit;
+import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
-import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
 import java.io.IOException;
@@ -24,22 +24,15 @@ public class WorldResetManager {
         this.resetFlagFile = new File(plugin.getDataFolder(), "reset_pending.yml");
     }
 
-    /**
-     * Prüft beim Start, ob ein Reset durchgeführt wurde (z.B. für Nachrichten).
-     */
     public void checkResetStatus() {
         if (resetFlagFile.exists()) {
             plugin.getLogger().info("Ein Welt-Reset wurde erkannt! Bereinige Flag...");
             resetFlagFile.delete();
-            // Optional: Hier könnte man eine Broadcast-Nachricht senden "Willkommen in Season X"
         }
     }
 
-    /**
-     * Startet den Reset-Prozess.
-     */
     public void initiateReset(CommandSender requester) {
-        // 1. Flag setzen (Markierung für den nächsten Start)
+        // 1. Flag setzen
         try {
             FileConfiguration cfg = YamlConfiguration.loadConfiguration(resetFlagFile);
             cfg.set("timestamp", System.currentTimeMillis());
@@ -49,17 +42,20 @@ public class WorldResetManager {
             e.printStackTrace();
         }
 
-        // Feedback an den Sender (bevor der Server stoppt)
         requester.sendMessage(plugin.getMessage("reset-success-sender", "§aReset eingeleitet. Server stoppt gleich..."));
-        
-        // Broadcast Warnung
         String broadcastMsg = plugin.getMessage("reset-broadcast-warning", "§4§lACHTUNG: §cDie Welt wird gelöscht und der Server stoppt!");
         plugin.getServer().broadcastMessage(broadcastMsg);
 
-        // 2. Scheduler starten für Kick & Delete & Shutdown
-        // Wir warten 3 Sekunden (60 Ticks), damit die Chatnachricht sicher ankommt
+        // 2. Scheduler starten
         plugin.getServer().getGlobalRegionScheduler().runDelayed(plugin, task -> {
             
+            // WICHTIG: Auto-Save deaktivieren!
+            // Verhindert, dass der Server die gelöschten Dateien beim Shutdown wiederherstellt.
+            plugin.getLogger().info("Deaktiviere Welt-Speicherung...");
+            for (World world : Bukkit.getWorlds()) {
+                world.setAutoSave(false);
+            }
+
             // A. Alle Spieler kicken
             String kickMsg = plugin.getMessage("reset-kick-message", "§cWelt-Reset!\n§eDer Server startet gleich neu.");
             for (Player p : Bukkit.getOnlinePlayers()) {
@@ -68,8 +64,8 @@ public class WorldResetManager {
 
             plugin.getLogger().info("Starte Löschvorgang der Welten...");
 
-            // B. Welten löschen (Inhalt)
-            // Löscht "world", "world_nether", "world_the_end" (Standard-Namen)
+            // B. Welten löschen
+            // Wir löschen "world", "world_nether", "world_the_end"
             deleteWorldContent("world");
             deleteWorldContent("world_nether");
             deleteWorldContent("world_the_end");
@@ -82,46 +78,48 @@ public class WorldResetManager {
         }, 60L); 
     }
 
-    /**
-     * Löscht den Inhalt der Welt, behält aber Ordnerstruktur bei, um File-Locks zu umgehen.
-     */
     private void deleteWorldContent(String worldName) {
         File worldFolder = new File(Bukkit.getWorldContainer(), worldName);
         if (!worldFolder.exists()) return;
 
-        // Ordner und Dateien, die gelöscht werden sollen, um eine neue Welt zu erzwingen
-        // "region" = Chunks, "playerdata" = Inventare, "level.dat" = Seed/Zeit
+        // Ordner/Dateien, die weg müssen für einen neuen Seed/Reset
         String[] contentsToDelete = {"region", "playerdata", "stats", "advancements", "poi", "entities", "DIM1", "DIM-1", "level.dat", "uid.dat"};
         
         for (String targetName : contentsToDelete) {
             File target = new File(worldFolder, targetName);
             if (target.exists()) {
+                boolean deleted = false;
                 if (target.isDirectory()) {
-                    deleteDirectoryRecursively(target.toPath());
+                    deleted = deleteDirectoryRecursively(target.toPath());
                 } else {
                     try {
-                        target.delete();
+                        deleted = target.delete();
                     } catch (Exception ignored) {}
+                }
+                
+                // Logging für Debugging (damit du in der Konsole siehst, was passiert)
+                if (deleted) {
+                    plugin.getLogger().info("Gelöscht: " + worldName + "/" + targetName);
+                } else {
+                    plugin.getLogger().warning("Konnte nicht löschen (evtl. gesperrt): " + worldName + "/" + targetName);
                 }
             }
         }
     }
 
-    private void deleteDirectoryRecursively(Path path) {
+    private boolean deleteDirectoryRecursively(Path path) {
         try (Stream<Path> walk = Files.walk(path)) {
             walk.sorted(Comparator.reverseOrder())
                 .map(Path::toFile)
                 .forEach(file -> {
                     try {
-                        // Versuch zu löschen. Wenn gesperrt (Lock), ignorieren wir es.
-                        // Wichtig ist, dass die .mca Dateien (Regionen) weg sind.
                         file.delete();
-                    } catch (Exception ignored) {
-                        // Ignorieren
-                    }
+                    } catch (Exception ignored) { }
                 });
+            return !Files.exists(path);
         } catch (IOException e) {
-            plugin.getLogger().warning("Warnung beim Löschen von Ordner: " + path);
+            plugin.getLogger().warning("Fehler beim Löschen von Ordner: " + path);
+            return false;
         }
     }
 }
