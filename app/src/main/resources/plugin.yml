@@ -5,6 +5,7 @@ main: foliachallenges.FoliaChallengePlugin
 api-version: 1.21
 description: A challenge plugin for Folia servers
 folia-supported: true
+load: STARTUP
 commands:
   challenges:
     description: Manage the challenge timer
