@@ -542,7 +542,13 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             removeItemDisplay(p);
             updateBossBar(p);
         }
-        saveData();
+        
+        // Delete data.yml to prevent recreation
+        File dataFile = new File(getDataFolder(), "data.yml");
+        if (dataFile.exists()) {
+            dataFile.delete();
+        }
+        
         sender.sendMessage(PREFIX + messages.getString("reset-data-cleared", "§cChallenge data (Scores & Items) have been reset!"));
     }
 
