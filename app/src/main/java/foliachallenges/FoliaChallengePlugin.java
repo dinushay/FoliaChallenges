@@ -147,6 +147,8 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
 
     private void prepareWorldReset(CommandSender sender) {
         String kickMsg = messages.getString("reset-kick-message", "§cThe server is being reset!\n§eRestart shortly...");
+        String playerName = (sender == null) ? "Console" : sender.getName();
+        kickMsg = kickMsg.replace("%player%", playerName);
         for (Player p : Bukkit.getOnlinePlayers()) {
             p.kickPlayer(kickMsg);
         }
