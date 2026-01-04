@@ -118,7 +118,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
 
             // FIX 1: If the world is active, we must KEEP it in the list
             if (worldName.equals(currentLevelName)) {
-                getLogger().warning(messages.getString("cleanup-skip-active", "Skipping deletion of %world% because it is currently active! It will be queued for the next restart.").replace("%world%", worldName));
+                getLogger().warning(messages.getString("cleanup-skip-active", "Skipping deletion of %world% as it is currently active! Marked for the next restart.").replace("%world%", worldName));
                 keptWorlds.add(worldName); // <--- That was missing before!
                 continue;
             }
@@ -135,7 +135,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             // FIX 2: Check if the deletion was successful. 
             // If the folder still exists (e.g. Permission Error), keep it in the list!
             if (worldFolder.exists()) {
-                getLogger().warning(messages.getString("cleanup-delete-failed", "Failed to fully delete %world%. Keeping it in queue.").replace("%world%", worldName));
+                getLogger().warning(messages.getString("cleanup-delete-failed", "Could not fully delete %world%. It remains in the queue.").replace("%world%", worldName));
                 keptWorlds.add(worldName);
             }
         }
@@ -166,13 +166,13 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             }
         }
 
-        sender.sendMessage(PREFIX + messages.getString("reset-initiated", "§aReset initiated. World will be rotated and seed renewed..."));
+        sender.sendMessage(PREFIX + messages.getString("reset-initiated", "§aReset initiated. Switching world and refreshing seed..."));
 
         try {
             // IMPORTANT: Here we change the server.properties for the NEXT start
             rotateWorldAndResetSeed();
         } catch (Exception e) {
-            sender.sendMessage(PREFIX + messages.getString("reset-error-properties", "§cError modifying server.properties: %error%").replace("%error%", e.getMessage()));
+            sender.sendMessage(PREFIX + messages.getString("reset-error-properties", "§cError editing server.properties: %error%").replace("%error%", e.getMessage()));
             e.printStackTrace();
             return;
         }
@@ -237,11 +237,11 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                     try {
                         Files.delete(path);
                     } catch (IOException e) {
-                        getLogger().log(Level.WARNING, messages.getString("cleanup-delete-path-failed", "Failed to delete: %path%").replace("%path%", path.toString()));
+                        getLogger().log(Level.WARNING, messages.getString("cleanup-delete-path-failed", "Error deleting: %path%").replace("%path%", path.toString()));
                     }
                 });
         } catch (IOException e) {
-            getLogger().log(Level.SEVERE, messages.getString("cleanup-walk-error", "Error walking directory: %folder%").replace("%folder%", folder.getName()), e);
+            getLogger().log(Level.SEVERE, messages.getString("cleanup-walk-error", "Error walking through directory: %folder%").replace("%folder%", folder.getName()), e);
         }
     }
     // ---------------------------
@@ -336,9 +336,9 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             Material item = assignedItems.get(player.getUniqueId());
             if (item != null) {
                 String itemName = formatItemName(item.name());
-                bar.setTitle(messages.getString("bossbar-item", "Current Item: %item%").replace("%item%", itemName));
+                bar.setTitle(messages.getString("bossbar-item", "Current Item: §e%item%").replace("%item%", itemName));
             } else {
-                bar.setTitle(messages.getString("bossbar-paused", "Timer paused"));
+                bar.setTitle(messages.getString("bossbar-paused", "§cTimer paused"));
             }
         }
     }
@@ -388,7 +388,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!sender.isOp() && !sender.hasPermission("foliachallenges.admin")) {
-            sender.sendMessage(PREFIX + messages.getString("no-permission", "§cYou don't have permission to use this command."));
+            sender.sendMessage(PREFIX + messages.getString("no-permission", "§cYou do not have permission for this command!"));
             return true;
         }
         
@@ -405,9 +405,9 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                 resetChallengeData(sender);
                 prepareWorldReset(sender);
             } else {
-                sender.sendMessage(PREFIX + messages.getString("reset-warning-1", "§4§lWARNING: §cThis command deletes all challenge data"));
-                sender.sendMessage(PREFIX + messages.getString("reset-warning-2", "§cand §lgenerates a new world§c!"));
-                sender.sendMessage(PREFIX + messages.getString("reset-confirm-usage", "§7Use §c/reset confirm §7to proceed."));
+                sender.sendMessage(PREFIX + messages.getString("reset-warning-1", "§4§lWARNING: §cPlease confirm the reset command!"));
+                sender.sendMessage(PREFIX + messages.getString("reset-warning-2", "§cThis command clears all §lChallenge Data §r§cand §lgenerates a new world§c!"));
+                sender.sendMessage(PREFIX + messages.getString("reset-confirm-usage", "§7Use §c/reset confirm§7 to continue."));
             }
             return true;
         }
@@ -449,7 +449,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
 
         if (cmdName.equals("timer")) {
             if (args.length == 0) {
-                sender.sendMessage(PREFIX + messages.getString("usage", "Use /challenges help for command list"));
+                sender.sendMessage(PREFIX + messages.getString("usage", "Use §6/challenges help §7to see the command list"));
                 return true;
             }
             String subCommand = args[0].toLowerCase();
@@ -468,7 +468,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                     try {
                         setTimer(sender, Integer.parseInt(args[1]));
                     } catch (NumberFormatException e) {
-                        sender.sendMessage(PREFIX + messages.getString("invalid-minutes", "Ungültige Minutenanzahl!"));
+                        sender.sendMessage(PREFIX + messages.getString("invalid-minutes", "§4Invalid number of minutes!"));
                     }
                     break;
                 default:
@@ -481,7 +481,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     }
 
     private boolean sendUsage(CommandSender sender, String label) {
-        sender.sendMessage(PREFIX + messages.getString("usage", "Use /challenges help for command list"));
+        sender.sendMessage(PREFIX + messages.getString("usage", "Use §6/challenges help §7to see the command list"));
         return true;
     }
 
@@ -513,15 +513,15 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     // --- Timer Logic ---
     private void startTimer(CommandSender sender) {
         if (!timerSet) {
-            sender.sendMessage(PREFIX + messages.getString("timer-not-set-message", "Timer nicht gesetzt!"));
+            sender.sendMessage(PREFIX + messages.getString("timer-not-set-message", "§cTimer not set!"));
             return;
         }
         if (remainingSeconds == 0) {
-            sender.sendMessage(PREFIX + messages.getString("timer-expired", "Timer ist abgelaufen! Setze neue Zeit mit /timer set <minuten>."));
+            sender.sendMessage(PREFIX + messages.getString("timer-expired", "§cTimer has expired! §7Set a new time using §l/timer set <minutes>§r§7."));
             return;
         }
         if (timerRunning) {
-            sender.sendMessage(PREFIX + messages.getString("timer-already-running", "Timer läuft bereits!"));
+            sender.sendMessage(PREFIX + messages.getString("timer-already-running", "Timer is already running!"));
             return;
         }
         
@@ -543,7 +543,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         for (Player p : getServer().getOnlinePlayers()) {
             p.playSound(p.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
         }
-        getServer().broadcastMessage(PREFIX + messages.getString("timer-started-global", "§aDer Challenge-Timer wurde gestartet!"));
+        getServer().broadcastMessage(PREFIX + messages.getString("timer-started-global", "§aThe challenge timer has started!"));
         
         saveTask = scheduler.runAtFixedRate(this, task -> saveData(), 20, 20);
         startTimerTask();
@@ -567,12 +567,12 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             dataFile.delete();
         }
         
-        sender.sendMessage(PREFIX + messages.getString("reset-data-cleared", "§cChallenge data (Scores & Items) have been reset!"));
+        sender.sendMessage(PREFIX + messages.getString("reset-data-cleared", "§cChallenge data has been reset!"));
     }
 
     private void stopTimer(CommandSender sender) {
         if (!timerRunning) {
-            sender.sendMessage(PREFIX + messages.getString("timer-not-running", "Timer läuft nicht!"));
+            sender.sendMessage(PREFIX + messages.getString("timer-not-running", "Timer is not running!"));
             return;
         }
         timerRunning = false;
@@ -585,7 +585,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             updateBossBar(p);
         }
         
-        getServer().broadcastMessage(PREFIX + messages.getString("timer-stopped-global", "§cDer Challenge-Timer wurde gestoppt!"));
+        getServer().broadcastMessage(PREFIX + messages.getString("timer-stopped-global", "§cThe challenge timer has stopped!"));
         updateActionBar();
         saveData();
     }
@@ -594,7 +594,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         timerSeconds = minutes * 60L;
         remainingSeconds = timerSeconds;
         timerSet = true;
-        sender.sendMessage(PREFIX + messages.getString("timer-set", "Timer auf %minutes% Minuten gesetzt!").replace("%minutes%", String.valueOf(minutes)));
+        sender.sendMessage(PREFIX + messages.getString("timer-set", "Timer set to §6%minutes% minutes§7!").replace("%minutes%", String.valueOf(minutes)));
         updateActionBar();
         saveData();
     }
@@ -625,7 +625,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             .sorted(Map.Entry.<UUID, Integer>comparingByValue().reversed())
             .collect(Collectors.toList());
 
-        getServer().broadcastMessage(PREFIX + messages.getString("color-title", "§6§l") + messages.getString("leaderboard-title", "=== Challenge Ergebnisse ==="));
+        getServer().broadcastMessage(PREFIX + messages.getString("color-title", "§6§l") + messages.getString("leaderboard-title", "§6=== Challenge Results ==="));
         
         int rank = 1;
         for (int i = 0; i < sortedScores.size(); i++) {
@@ -634,7 +634,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             String pName = Bukkit.getOfflinePlayer(sortedScores.get(i).getKey()).getName();
             if (pName == null) pName = "Unknown";
             
-            String entry = messages.getString("leaderboard-entry", "#%rank% %player% - %points% Punkte")
+            String entry = messages.getString("leaderboard-entry", "#%rank% %player% §r- §a%points% Points")
                 .replace("%rank%", String.valueOf(rank))
                 .replace("%player%", pName)
                 .replace("%points%", String.valueOf(sortedScores.get(i).getValue()));
@@ -652,22 +652,22 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     }
 
     private void listItems(CommandSender sender) {
-        sender.sendMessage(PREFIX + messages.getString("assigned-items-title", "=== Assigned Items ==="));
+        sender.sendMessage(PREFIX + messages.getString("assigned-items-title", "§6=== Assigned Items ==="));
         assignedItems.forEach((uuid, mat) -> {
             Player p = Bukkit.getPlayer(uuid);
             if (p != null) {
-                 sender.sendMessage(PREFIX + messages.getString("list-item-entry", "%player% - %item%").replace("%player%", p.getName()).replace("%item%", formatItemName(mat.name())));
+                 sender.sendMessage(PREFIX + messages.getString("list-item-entry", "§e%player% §r- §a%item%").replace("%player%", p.getName()).replace("%item%", formatItemName(mat.name())));
             }
         });
         sender.sendMessage(PREFIX + messages.getString("color-separator", "§6§l==================="));
     }
 
     private void listPoints(CommandSender sender) {
-        sender.sendMessage(PREFIX + messages.getString("player-points-title", "=== Player Points ==="));
+        sender.sendMessage(PREFIX + messages.getString("player-points-title", "§6==== Player Points ===="));
         scores.forEach((uuid, points) -> {
              Player p = Bukkit.getPlayer(uuid);
              if (p != null && points > 0) {
-                 sender.sendMessage(PREFIX + messages.getString("list-points-entry", "%player% - %points% Punkte").replace("%player%", p.getName()).replace("%points%", String.valueOf(points)));
+                 sender.sendMessage(PREFIX + messages.getString("list-points-entry", "§e%player% §r- §a%points% Points").replace("%player%", p.getName()).replace("%points%", String.valueOf(points)));
              }
         });
         sender.sendMessage(PREFIX + messages.getString("color-separator", "§6§l==================="));
@@ -681,7 +681,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         try {
             Material material = Material.valueOf(itemName.toUpperCase());
             if (configurableBlacklist.contains(material)) {
-                sender.sendMessage(PREFIX + messages.getString("item-already-blacklisted", "§cAlready blacklisted!"));
+                sender.sendMessage(PREFIX + messages.getString("item-already-blacklisted", "§cItem is already on the blacklist!"));
                 return;
             }
             configurableBlacklist.add(material);
@@ -704,7 +704,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             list.add(material.name());
             c.set("blacklisted-items", list);
             c.save(f);
-            sender.sendMessage(PREFIX + messages.getString("item-blacklisted", "§aItem blacklisted!"));
+            sender.sendMessage(PREFIX + messages.getString("item-blacklisted", "§aItem added to blacklist!"));
             
             if (config.getBoolean("share-blacklisted-items-to-developer", true)) {
                 sendDiscordWebhook("Item-blacklist: " + material.name());
@@ -773,7 +773,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             scores.put(player.getUniqueId(), scores.getOrDefault(player.getUniqueId(), 0) + 1);
             assignRandomItem(player);
             player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
-            player.sendMessage(PREFIX + messages.getString("item-found", "§aItem gefunden!"));
+            player.sendMessage(PREFIX + messages.getString("item-found", "§aDu hast dein Item gefunden! Neues Item zugewiesen."));
         }
     }
     
