@@ -461,7 +461,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     }
 
     private boolean sendUsage(CommandSender sender, String label) {
-        sender.sendMessage(PREFIX + messages.getString("help-hint", "Use /challenges help for command list"));
+        sender.sendMessage(PREFIX + messages.getString("usage-timer", "Use /challenges help for command list"));
         return true;
     }
 

@@ -54,7 +54,6 @@ block-item-error: "§cError: %error%"
 save-data-error: "Could not save data.yml"
 copy-resource-error: "Could not copy resource %filename%"
 invalid-blacklist-material: "Invalid material in blacklist: %item%"
-help-hint: "Use /challenges help for command list"
 help-message: |
   §6§l=== FoliaChallenges Help ===
   §e/timer start §7- Start the challenge timer
