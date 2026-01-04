@@ -51,7 +51,7 @@ import java.util.stream.Stream;
 
 public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCompleter {
 
-    private static final String PREFIX = "§7[§5FoliaChallenges§7] ";
+    private static final String PREFIX = "§8§l┃ §5FoliaChallenges §8┃§7 ";
 
     private FileConfiguration config;
     private FileConfiguration messages;
