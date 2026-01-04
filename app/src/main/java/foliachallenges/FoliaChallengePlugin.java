@@ -419,7 +419,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                         return true;
                     } else if (args[1].equalsIgnoreCase("blockitem")) {
                         if (args.length < 3) {
-                            sender.sendMessage(PREFIX + messages.getString("usage-blockitem", "Usage: /%command% randomitembattle blockitem <item>").replace("%command%", label));
+                            sender.sendMessage(PREFIX + messages.getString("help-hint", "Use /challenges help for command list"));
                             return true;
                         }
                         blockItem(sender, args[2]);
@@ -429,6 +429,9 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                     reloadConfig();
                     messages = YamlConfiguration.loadConfiguration(new File(getDataFolder(), "messages.yml"));
                     sender.sendMessage(PREFIX + "Configuration and messages reloaded!");
+                    return true;
+                } else if (subCmd.equals("help")) {
+                    sendHelp(sender);
                     return true;
                 }
             }
@@ -451,7 +454,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                     break;
                 case "set":
                     if (args.length < 2) {
-                        sender.sendMessage(PREFIX + messages.getString("usage-timer-set", "Usage: /timer set <minutes>"));
+                        sender.sendMessage(PREFIX + messages.getString("help-hint", "Use /challenges help for command list"));
                         return true;
                     }
                     try {
@@ -461,7 +464,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                     }
                     break;
                 default:
-                    sender.sendMessage(PREFIX + messages.getString("usage-timer", "Usage: /timer <start|stop|set|resume> [minutes]"));
+                    sender.sendMessage(PREFIX + messages.getString("help-hint", "Use /challenges help for command list"));
                     break;
             }
             return true;
@@ -470,7 +473,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     }
 
     private boolean sendUsage(CommandSender sender, String label) {
-        sender.sendMessage(PREFIX + messages.getString("usage-randomitembattle", "Usage: /" + label + " randomitembattle <listitems|listpoints|blockitem>").replace("%command%", label));
+        sender.sendMessage(PREFIX + messages.getString("help-hint", "Use /challenges help for command list"));
         return true;
     }
 
@@ -483,7 +486,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         }
 
         if (cmdName.equals("challenges")) {
-            if (args.length == 1) return filter(args[0], Arrays.asList("randomitembattle", "reload"));
+            if (args.length == 1) return filter(args[0], Arrays.asList("randomitembattle", "reload", "help"));
             if (args.length == 2 && args[0].equalsIgnoreCase("randomitembattle")) return filter(args[1], Arrays.asList("listitems", "listpoints", "blockitem"));
             if (args.length == 3 && args[1].equalsIgnoreCase("blockitem")) {
                 return Arrays.stream(Material.values()).filter(Material::isItem).map(Material::name).map(String::toLowerCase)
@@ -831,5 +834,19 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                 try { assignedItems.put(UUID.fromString(k), Material.valueOf((String)v)); } catch(Exception e){}
             });
         }
+    }
+
+    private void sendHelp(CommandSender sender) {
+        String help = PREFIX + "§6§l=== FoliaChallenges Help ===\n" +
+                      PREFIX + "§e/timer start §7- Start the challenge timer\n" +
+                      PREFIX + "§e/timer stop §7- Stop the challenge timer\n" +
+                      PREFIX + "§e/timer set <minutes> §7- Set the timer duration\n" +
+                      PREFIX + "§e/challenges randomitembattle listitems §7- List assigned items\n" +
+                      PREFIX + "§e/challenges randomitembattle listpoints §7- List player points\n" +
+                      PREFIX + "§e/challenges randomitembattle blockitem <item> §7- Block an item\n" +
+                      PREFIX + "§e/challenges reload §7- Reload config and messages\n" +
+                      PREFIX + "§e/reset confirm §7- Reset the world (use with caution)\n" +
+                      PREFIX + "§6§l========================";
+        sender.sendMessage(help);
     }
 }
