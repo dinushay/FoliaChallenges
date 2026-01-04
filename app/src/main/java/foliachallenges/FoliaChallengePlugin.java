@@ -133,7 +133,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             } catch (Exception e) {
                 Bukkit.shutdown();
             }
-        }, 5L);
+        }, 20L);
     }
 
     private void performWorldReset() {
