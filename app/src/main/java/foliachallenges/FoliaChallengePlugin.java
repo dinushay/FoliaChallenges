@@ -3,6 +3,7 @@ package foliachallenges;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.boss.BarColor;
 import org.bukkit.boss.BarStyle;
 import org.bukkit.boss.BossBar;
@@ -31,10 +32,13 @@ import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,6 +46,7 @@ import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCompleter {
 
@@ -73,6 +78,17 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         saveDefaultMessages();
         saveDefaultItemBlacklist();
         config = getConfig();
+
+        // --- WORLD RESET LOGIC START ---
+        // Prüfen, ob ein Reset angefordert wurde (bevor Welten geladen werden, wenn load: STARTUP gesetzt ist)
+        if (config.getBoolean("do-world-reset", false)) {
+            getLogger().info("World Reset detected! Deleting worlds...");
+            performWorldReset();
+            config.set("do-world-reset", false);
+            saveConfig();
+        }
+        // --- WORLD RESET LOGIC END ---
+
         messages = YamlConfiguration.loadConfiguration(new File(getDataFolder(), "messages.yml"));
         loadConfigurableBlacklist();
         getServer().getPluginManager().registerEvents(this, this);
@@ -94,6 +110,66 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         // Daten laden
         loadData();
     }
+
+    // --- World Reset Methods ---
+    private void prepareWorldReset(CommandSender sender) {
+        // 1. Config Flag setzen
+        config.set("do-world-reset", true);
+        saveConfig();
+
+        // 2. Spieler kicken
+        String kickMsg = messages.getString("reset-kick-message", "§cDer Server wird zurückgesetzt!\n§eNeustart in Kürze...");
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            p.kickPlayer(kickMsg);
+        }
+
+        sender.sendMessage("§aReset eingeleitet. Server startet neu...");
+
+        // 3. Server neustarten (damit onEnable beim Start die Welten löschen kann)
+        // Verzögerung um sicherzustellen, dass Kicks durchgehen
+        Bukkit.getScheduler().runTaskLater(this, () -> {
+            try {
+                Bukkit.spigot().restart();
+            } catch (Exception e) {
+                Bukkit.shutdown();
+            }
+        }, 5L);
+    }
+
+    private void performWorldReset() {
+        // Liste der zu löschenden Welten (Standard-Namen)
+        String levelName = getServer().getProperties().getProperty("level-name", "world");
+        List<String> worldsToDelete = Arrays.asList(
+            levelName,
+            levelName + "_nether",
+            levelName + "_the_end"
+        );
+
+        for (String worldName : worldsToDelete) {
+            File worldFolder = new File(getServer().getWorldContainer(), worldName);
+            if (worldFolder.exists()) {
+                getLogger().info("Deleting world folder: " + worldName);
+                deleteDirectory(worldFolder);
+            }
+        }
+    }
+
+    private void deleteDirectory(File file) {
+        if (file.isDirectory()) {
+            File[] entries = file.listFiles();
+            if (entries != null) {
+                for (File entry : entries) {
+                    // session.lock nicht löschen, wenn der Server noch Zugriff darauf hat (passiert bei load: STARTUP meist nicht)
+                    if (entry.getName().equals("session.lock")) continue;
+                    deleteDirectory(entry);
+                }
+            }
+        }
+        if (!file.getName().equals("session.lock")) {
+            file.delete();
+        }
+    }
+    // ---------------------------
 
     private void registerCommand(String name) {
         if (getCommand(name) != null) {
@@ -254,7 +330,10 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                 String subCmd = args[0].toLowerCase();
                 
                 if (subCmd.equals("reset")) {
-                    resetChallenge(sender);
+                    // Zuerst die Challenge-Daten löschen (wie bisher)
+                    resetChallengeData(sender);
+                    // Dann den Welt-Reset vorbereiten und Server neustarten
+                    prepareWorldReset(sender);
                     return true;
                 }
                 if (subCmd.equals("randomitembattle")) {
@@ -382,7 +461,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         updateActionBar();
     }
     
-    private void resetChallenge(CommandSender sender) {
+    private void resetChallengeData(CommandSender sender) {
         if (timerRunning) stopTimer(sender);
         
         // Hier löschen wir die Daten tatsächlich
@@ -394,7 +473,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             updateBossBar(p);
         }
         saveData();
-        sender.sendMessage("§cChallenge-Daten (Scores & Items) wurden vollständig zurückgesetzt!");
+        sender.sendMessage("§cChallenge-Daten (Scores & Items) wurden zurückgesetzt!");
     }
 
     private void stopTimer(CommandSender sender) {
