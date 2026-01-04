@@ -79,17 +79,16 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         saveDefaultMessages();
         saveDefaultItemBlacklist();
         config = getConfig();
-
+        messages = YamlConfiguration.loadConfiguration(new File(getDataFolder(), "messages.yml"));
+        loadConfigurableBlacklist();
+        getServer().getPluginManager().registerEvents(this, this);
+        
         // --- CLEANUP LOGIC START ---
         // Delete old worlds that were marked for deletion during the last reset
         // Since we are now in a new world, the old folders are inactive and can be deleted.
         cleanupOldWorlds();
         // --- CLEANUP LOGIC END ---
 
-        messages = YamlConfiguration.loadConfiguration(new File(getDataFolder(), "messages.yml"));
-        loadConfigurableBlacklist();
-        getServer().getPluginManager().registerEvents(this, this);
-        
         registerCommand("challenges");
         registerCommand("timer");
         registerCommand("reset");
