@@ -525,7 +525,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         for (Player p : getServer().getOnlinePlayers()) {
             p.playSound(p.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
         }
-        sender.sendMessage(PREFIX + messages.getString("timer-started", "Timer gestartet!"));
         getServer().broadcastMessage(PREFIX + messages.getString("timer-started-global", "§aDer Challenge-Timer wurde gestartet!"));
         
         saveTask = scheduler.runAtFixedRate(this, task -> saveData(), 20, 20);
