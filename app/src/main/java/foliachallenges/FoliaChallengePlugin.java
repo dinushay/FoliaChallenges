@@ -3,7 +3,6 @@ package foliachallenges;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
-import org.bukkit.World;
 import org.bukkit.boss.BarColor;
 import org.bukkit.boss.BarStyle;
 import org.bukkit.boss.BossBar;
@@ -30,9 +29,9 @@ import io.papermc.paper.threadedregions.scheduler.GlobalRegionScheduler;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -42,9 +41,10 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Random;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -64,11 +64,9 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     private List<Material> configurableBlacklist = new ArrayList<>();
     private List<Material> hardcodedBlacklist = Arrays.asList(Material.AIR);
     
-    // WICHTIG: UUID statt Player als Key für persistente Daten
     private Map<UUID, Material> assignedItems = new HashMap<>();
     private Map<UUID, Integer> scores = new HashMap<>();
     
-    // Visuelle Dinge (BossBar, ArmorStand) bleiben Player-bezogen (nur solange online)
     private Map<Player, BossBar> bossBars = new HashMap<>();
     private Map<Player, org.bukkit.entity.ArmorStand> itemDisplays = new HashMap<>();
 
@@ -80,7 +78,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         config = getConfig();
 
         // --- WORLD RESET LOGIC START ---
-        // Prüfen, ob ein Reset angefordert wurde (bevor Welten geladen werden, wenn load: STARTUP gesetzt ist)
         if (config.getBoolean("do-world-reset", false)) {
             getLogger().info("World Reset detected! Deleting worlds...");
             performWorldReset();
@@ -93,7 +90,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         loadConfigurableBlacklist();
         getServer().getPluginManager().registerEvents(this, this);
         
-        // Commands registrieren
         registerCommand("challenges");
         registerCommand("timer");
         registerCommand("resume");
@@ -104,20 +100,16 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         this.scheduler = getServer().getGlobalRegionScheduler();
         scheduler.run(this, task -> pauseWorlds());
         
-        // Action Bar Task starten
         actionBarTask = scheduler.runAtFixedRate(this, task -> updateActionBar(), 1, 10);
         
-        // Daten laden
         loadData();
     }
 
     // --- World Reset Methods ---
     private void prepareWorldReset(CommandSender sender) {
-        // 1. Config Flag setzen
         config.set("do-world-reset", true);
         saveConfig();
 
-        // 2. Spieler kicken
         String kickMsg = messages.getString("reset-kick-message", "§cDer Server wird zurückgesetzt!\n§eNeustart in Kürze...");
         for (Player p : Bukkit.getOnlinePlayers()) {
             p.kickPlayer(kickMsg);
@@ -125,20 +117,20 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
 
         sender.sendMessage("§aReset eingeleitet. Server startet neu...");
 
-        // 3. Server neustarten (damit onEnable beim Start die Welten löschen kann)
-        // Verzögerung um sicherzustellen, dass Kicks durchgehen
+        // FIX: Verzögerung auf 20 Ticks (1 Sekunde) erhöht
         Bukkit.getScheduler().runTaskLater(this, () -> {
             try {
                 Bukkit.spigot().restart();
             } catch (Exception e) {
                 Bukkit.shutdown();
             }
-        }, 20L);
+        }, 20L); 
     }
 
     private void performWorldReset() {
-        // Liste der zu löschenden Welten (Standard-Namen)
-        String levelName = getServer().getProperties().getProperty("level-name", "world");
+        // FIX: Ersetzt getServer().getProperties() durch eine robuste Methode
+        String levelName = getMainLevelName(); 
+        
         List<String> worldsToDelete = Arrays.asList(
             levelName,
             levelName + "_nether",
@@ -149,24 +141,44 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             File worldFolder = new File(getServer().getWorldContainer(), worldName);
             if (worldFolder.exists()) {
                 getLogger().info("Deleting world folder: " + worldName);
-                deleteDirectory(worldFolder);
+                deleteWorldFolder(worldFolder);
             }
         }
     }
 
-    private void deleteDirectory(File file) {
-        if (file.isDirectory()) {
-            File[] entries = file.listFiles();
-            if (entries != null) {
-                for (File entry : entries) {
-                    // session.lock nicht löschen, wenn der Server noch Zugriff darauf hat (passiert bei load: STARTUP meist nicht)
-                    if (entry.getName().equals("session.lock")) continue;
-                    deleteDirectory(entry);
-                }
-            }
+    // FIX: Neue Methode zum Lesen der server.properties
+    private String getMainLevelName() {
+        try (InputStream input = new FileInputStream("server.properties")) {
+            Properties prop = new Properties();
+            prop.load(input);
+            return prop.getProperty("level-name", "world");
+        } catch (IOException ex) {
+            getLogger().warning("Could not read server.properties, defaulting to 'world'");
+            return "world";
         }
-        if (!file.getName().equals("session.lock")) {
-            file.delete();
+    }
+
+    // FIX: Robustere Löschmethode mit java.nio.file.Files.walk
+    private void deleteWorldFolder(File folder) {
+        Path rootPath = folder.toPath();
+        if (!Files.exists(rootPath)) return;
+
+        try (Stream<Path> walk = Files.walk(rootPath)) {
+            walk.sorted(Comparator.reverseOrder()) // Von unten nach oben löschen (Dateien vor Ordnern)
+                .forEach(path -> {
+                    try {
+                        // session.lock nicht löschen, wenn es gesperrt ist (oft vom Server-Prozess gehalten)
+                        if (path.endsWith("session.lock")) {
+                            return; 
+                        }
+                        Files.delete(path);
+                    } catch (IOException e) {
+                        // Loggen aber nicht abbrechen, damit der Rest gelöscht wird
+                        getLogger().log(Level.WARNING, "Failed to delete: " + path + " (" + e.getMessage() + ")");
+                    }
+                });
+        } catch (IOException e) {
+            getLogger().log(Level.SEVERE, "Error walking world directory: " + folder.getName(), e);
         }
     }
     // ---------------------------
@@ -179,7 +191,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
 
     @Override
     public void onDisable() {
-        // ArmorStands entfernen (werden beim Start neu erstellt)
         itemDisplays.clear();
         
         if (actionBarTask != null) actionBarTask.cancel();
@@ -330,9 +341,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                 String subCmd = args[0].toLowerCase();
                 
                 if (subCmd.equals("reset")) {
-                    // Zuerst die Challenge-Daten löschen (wie bisher)
                     resetChallengeData(sender);
-                    // Dann den Welt-Reset vorbereiten und Server neustarten
                     prepareWorldReset(sender);
                     return true;
                 }
@@ -435,14 +444,11 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         timerRunning = true;
         scheduler.run(this, task -> pauseWorlds());
         
-        // Items zuweisen und Visuals aktualisieren
         for (Player p : getServer().getOnlinePlayers()) {
             if (p.getGameMode() == GameMode.SURVIVAL) {
-                // Nur zuweisen, wenn in der UUID-Map noch KEIN Eintrag ist
                 if (!assignedItems.containsKey(p.getUniqueId())) {
                     assignRandomItem(p);
                 } else {
-                    // Falls schon eins da ist, sicherstellen, dass ArmorStand existiert
                     Material existing = assignedItems.get(p.getUniqueId());
                     createItemDisplay(p, existing);
                 }
@@ -464,7 +470,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     private void resetChallengeData(CommandSender sender) {
         if (timerRunning) stopTimer(sender);
         
-        // Hier löschen wir die Daten tatsächlich
         scores.clear();
         assignedItems.clear();
         
@@ -525,10 +530,8 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     }
 
     private void endChallenge() {
-        // HIER NICHTS LÖSCHEN außer Visuals
         itemDisplays.clear();
         
-        // Leaderboard anzeigen
         List<Map.Entry<UUID, Integer>> sortedScores = scores.entrySet().stream()
             .sorted(Map.Entry.<UUID, Integer>comparingByValue().reversed())
             .collect(Collectors.toList());
@@ -556,14 +559,12 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             updateBossBar(p);
         }
         
-        // WICHTIG: Speichern statt löschen!
         saveData();
     }
 
     private void listItems(CommandSender sender) {
         sender.sendMessage("§6§l=== Assigned Items ===");
         assignedItems.forEach((uuid, mat) -> {
-            // Zeige nur Online Spieler an, um Spam zu vermeiden (oder ändere Logik nach Wunsch)
             Player p = Bukkit.getPlayer(uuid);
             if (p != null) {
                  sender.sendMessage("§f" + p.getName() + " §7- §a" + formatItemName(mat.name()));
@@ -596,7 +597,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             }
             configurableBlacklist.add(material);
             
-            // Re-Assign für alle, die das Item haben (UUID basierend)
             for (Map.Entry<UUID, Material> entry : new HashMap<>(assignedItems).entrySet()) {
                 if (entry.getValue() == material) {
                     Player p = Bukkit.getPlayer(entry.getKey());
@@ -604,13 +604,11 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                         assignRandomItem(p);
                         p.sendMessage("§eDein Item wurde geblacklistet. Neues Item erhalten!");
                     } else {
-                        // Offline Spieler: Einfach aus Map löschen, bekommen beim Join ein neues
                         assignedItems.remove(entry.getKey());
                     }
                 }
             }
             
-            // Config speichern
             File f = new File(getDataFolder(), "items-blacklist.yml");
             FileConfiguration c = YamlConfiguration.loadConfiguration(f);
             List<String> list = c.getStringList("blacklisted-items");
@@ -661,12 +659,9 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         Player player = event.getPlayer();
         createBossBar(player);
         
-        // Prüfen ob Spieler schon Daten in der UUID-Map hat
         if (assignedItems.containsKey(player.getUniqueId())) {
-            // Hat schon Item -> Visuals erstellen
             createItemDisplay(player, assignedItems.get(player.getUniqueId()));
         } else if (timerRunning && player.getGameMode() == GameMode.SURVIVAL) {
-            // Neu und Timer läuft -> Zuweisen
             assignRandomItem(player);
         }
         updateBossBar(player);
@@ -677,7 +672,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         Player player = event.getPlayer();
         removeItemDisplay(player);
         bossBars.remove(player);
-        // HIER NICHTS MEHR LÖSCHEN! assignedItems und scores bleiben via UUID erhalten.
     }
 
     @EventHandler
@@ -700,7 +694,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         if (!config.getBoolean("allow-movement-without-timer", false) && !timerRunning && player.getGameMode() == GameMode.SURVIVAL) {
             if (e.getFrom().getX() != e.getTo().getX() || e.getFrom().getZ() != e.getTo().getZ()) {
                 e.setCancelled(true);
-                // WIEDERHERGESTELLT:
                 player.sendTitle(
                     "§c§l" + messages.getString("timer-paused-title", "STOP!"), 
                     messages.getString("timer-paused-subtitle", "Der Timer ist pausiert!"), 
@@ -733,7 +726,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             FileConfiguration data = new YamlConfiguration();
             data.set("remainingSeconds", remainingSeconds);
             
-            // Einfache Map Speicherung (UUID String -> Value)
             Map<String, Integer> scoreMap = new HashMap<>();
             scores.forEach((uuid, pts) -> scoreMap.put(uuid.toString(), pts));
             data.set("scores", scoreMap);
