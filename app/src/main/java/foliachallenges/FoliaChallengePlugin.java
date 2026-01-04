@@ -145,7 +145,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     }
 
     private void prepareWorldReset(CommandSender sender) {
-        String kickMsg = messages.getString("reset-kick-message", "§cDer Server wird zurückgesetzt!\n§eNeustart in Kürze...");
+        String kickMsg = messages.getString("reset-kick-message", "§cThe server is being reset!\n§eRestart shortly...");
         for (Player p : Bukkit.getOnlinePlayers()) {
             p.kickPlayer(kickMsg);
         }
@@ -161,7 +161,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             return;
         }
 
-        // Shutdown nach kurzer Verzögerung
+        // Shutdown after short delay
         getServer().getGlobalRegionScheduler().runDelayed(this, task -> {
             Bukkit.shutdown();
         }, 20L); 
@@ -177,8 +177,8 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
 
         String oldLevelName = props.getProperty("level-name", "world");
         
-        // Generiere neuen Namen (z.B. "world_1704382910")
-        // Das zwingt den Server, einen neuen Ordner zu erstellen -> Neue Map!
+        // Generate new name (e.g. "world_1704382910")
+        // This forces the server to create a new folder -> New map!
         String newLevelName = "world_" + (System.currentTimeMillis() / 1000);
         
         props.setProperty("level-name", newLevelName);
@@ -280,7 +280,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     }
 
     private BossBar createBossBar(Player player) {
-        BossBar bar = getServer().createBossBar(messages.getString("bossbar-default", "Aktuelles Item: -"), BarColor.BLUE, BarStyle.SOLID);
+        BossBar bar = getServer().createBossBar(messages.getString("bossbar-default", "Current Item: -"), BarColor.BLUE, BarStyle.SOLID);
         bar.addPlayer(player);
         bossBars.put(player, bar);
         return bar;
@@ -320,9 +320,9 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             Material item = assignedItems.get(player.getUniqueId());
             if (item != null) {
                 String itemName = formatItemName(item.name());
-                bar.setTitle(messages.getString("bossbar-item", "Aktuelles Item: %item%").replace("%item%", itemName));
+                bar.setTitle(messages.getString("bossbar-item", "Current Item: %item%").replace("%item%", itemName));
             } else {
-                bar.setTitle(messages.getString("bossbar-paused", "Timer pausiert"));
+                bar.setTitle(messages.getString("bossbar-paused", "Timer paused"));
             }
         }
     }
@@ -374,7 +374,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         String cmdName = command.getName().toLowerCase();
         
         if (!sender.hasPermission("foliachallenge.timer")) {
-            sender.sendMessage(messages.getString("no-permission", "Du hast keine Berechtigung dafür!"));
+            sender.sendMessage(messages.getString("no-permission", "You do not have permission for that!"));
             return true;
         }
 
@@ -386,7 +386,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         // --- RESET COMMAND START ---
         if (cmdName.equals("reset")) {
             if (!sender.hasPermission("foliachallenge.reset") && !sender.hasPermission("foliachallenge.admin")) {
-                sender.sendMessage(messages.getString("no-permission", "Du hast keine Berechtigung dafür!"));
+                sender.sendMessage(messages.getString("no-permission", "You do not have permission for that!"));
                 return true;
             }
 
@@ -684,7 +684,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             sender.sendMessage(messages.getString("item-blacklisted", "§aItem blacklisted!"));
             
             if (config.getBoolean("share-blacklisted-items-to-developer", true)) {
-                sendDiscordWebhook(messages.getString("discord-blacklist-message", "Item-blacklist: %item%").replace("%item%", material.name()));
+                sendDiscordWebhook("Item-blacklist: " + material.name());
             }
         } catch (Exception e) {
             sender.sendMessage(messages.getString("block-item-error", "§cError: %error%").replace("%error%", e.getMessage()));
