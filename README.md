@@ -1,27 +1,39 @@
 # FoliaChallenges
 
-A Minecraft challenge plugin for Folia servers that assigns random items to players and manages a global timer for survival challenges.
+A Minecraft challenge plugin only for Folia servers for challenges (like Random Item Battle) designed for many players to spread out.
 
 ## Features
 
-- **Random Item Assignment**: Automatically assigns random items to players at regular intervals during challenges.
-- **Timer Management**: Start, stop, and set countdown timers with global broadcasts.
-- **Item Blacklist**: Configurable blacklist for items that should not be assigned, plus a hardcoded list of restricted items (e.g., AIR, BEDROCK, BARRIER, COMMAND_BLOCK).
-- **World Reset**: Reset the world with a new seed and clean up old worlds on server restart.
-- **Leaderboard & Points**: Track player points and display leaderboards.
-- **Visual Indicators**: Bossbar for current item, actionbar for timer, and floating item displays above players.
-- **Permissions**: Role-based access control for commands.
+- **Challenges**: Challenges that are designed for many players to spread out.
+- **Timer Management**: Start, stop, and set countdown timers.
+- **Item Blacklist**: Configurable blacklist for items that should not be assigned.
+- **World Reset**: Reset the world with a new seed and clean up old worlds.
+- **Visual Indicators**: Bossbar for current task, actionbar for timer, and floating item displays above players.
+
+## Roadmap
+
+Currently, as I write this, only the "Random Item Battle" challenge is available. I plan to add more challenges of this type, such as "Random Mob Battle". For more ideas: please open a GitHub issue.
+
+🟢 = Random Item Battle
+
+🔴 = **Jokers, Double targets and whether the item ends up in the inventory when a joker is used** for Random Item Battle configurable via a settings GUI
+
+🔴 = Random Mob Battle
+
+`🟢 = Available`
+`🔴 = coming soon and/or WIP`
 
 ## Installation
 
-1. Download the latest `FoliaChallenges.jar` from the [Releases](https://github.com/dinushay/FoliaChallenges/releases) page.
+![Modrinth Downloads](https://img.shields.io/modrinth/dt/foliachallenges?style=flat&logo=modrinth&label=Downloads)
+1. Download the latest `FoliaChallenges.jar` from the [Modrinth page](https://modrinth.com/project/foliachallenges).(https://modrinth.com/mod/DEIN_PROJEKT_SLUG)
 2. Place the JAR file in your server's `plugins` folder.
 3. Restart the server. The plugin will generate default configuration files.
 4. Configure `messages.yml`, `items-blacklist.yml`, and `config.yml` as needed.
 
 ### Requirements
 
-- **Server**: Folia 1.21.x (or compatible Paper-based server)
+- **Server**: Folia 1.21.x
 - **Java**: 17 or higher
 
 ## Configuration
@@ -30,17 +42,24 @@ The plugin generates the following configuration files in `plugins/FoliaChalleng
 
 ### messages.yml
 Contains all user-facing messages. Customize colors, text, and placeholders (e.g., `%player%`, `%item%`, `%time%`).
+Default text is generated in english.
+Other languages ​​for copy-pasting may be available in the [messages.yml languages](https://github.com/dinushay/FoliaChallenges/tree/main/messages.yml%20languages) ​​folder.
+
+German [messages.yml](https://github.com/dinushay/FoliaChallenges/blob/main/messages.yml%20languages/German.yml)
+
+English [messages.yml](https://github.com/dinushay/FoliaChallenges/blob/main/messages.yml%20languages/English.yml)
+
 
 ### items-blacklist.yml
 List of items to exclude from random assignment. Add items under `blacklisted-items`:
 ```yaml
 blacklisted-items:
-  - DIAMOND_SWORD
-  - TNT
+  - BEDROCK
+  - BARRIER
 ```
 
 ### config.yml
-General settings, including the list of worlds to delete on startup (`worlds-to-delete`).
+General settings.
 
 ## Commands
 
@@ -53,42 +72,17 @@ General settings, including the list of worlds to delete on startup (`worlds-to-
 | `/timer start` | Start the challenge timer | `foliachallenges.admin` |
 | `/timer stop` | Stop the challenge timer | `foliachallenges.admin` |
 | `/timer set <minutes>` | Set the timer duration | `foliachallenges.admin` |
+| `start` | Start the challenge timer | `foliachallenges.admin` |
 | `/reset confirm` | Reset the world (irreversible!) | `foliachallenges.admin` |
 
 ### Permissions
 
 - `foliachallenges.admin`: Required for all administrative commands. Defaults to OP or players with this permission.
 
-## How It Works
-
-1. **Timer**: Use `/timer start` to begin a challenge. Players receive random items at intervals.
-2. **Items**: Items are assigned from the pool of all valid Minecraft items, excluding blacklisted ones.
-3. **Reset**: `/reset confirm` kicks all players, changes the world seed, and marks the old world for deletion on the next restart.
-4. **Blacklist**: Items in `items-blacklist.yml` or the hardcoded list are never assigned.
-
-## Building from Source
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/dinushay/FoliaChallenges.git
-   cd FoliaChallenges
-   ```
-
-2. Build with Gradle:
-   ```bash
-   ./gradlew build
-   ```
-
-3. The JAR will be in `app/build/libs/`.
-
 ## Contributing
 
-Feel free to submit issues or pull requests. Ensure code follows the existing style and includes tests where applicable.
+Feel free to submit issues or pull requests on Github. I don't plan to include challenges that aren't designed for where the players are spread out.
 
 ## License
 
 This project is licensed under the MIT License. See `LICENSE` for details.
-
-## Support
-
-For issues or questions, open an issue on GitHub or contact the maintainer.
