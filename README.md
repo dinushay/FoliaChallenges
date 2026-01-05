@@ -26,7 +26,7 @@ Currently, as I write this, only the "Random Item Battle" challenge is available
 ## Installation
 
 ![Modrinth Downloads](https://img.shields.io/modrinth/dt/foliachallenges?style=flat&logo=modrinth&label=Downloads)
-1. Download the latest `FoliaChallenges.jar` from the [Modrinth page](https://modrinth.com/project/foliachallenges).(https://modrinth.com/mod/DEIN_PROJEKT_SLUG)
+1. Download the latest `FoliaChallenges.jar` from the [Modrinth page](https://modrinth.com/project/foliachallenges).
 2. Place the JAR file in your server's `plugins` folder.
 3. Restart the server. The plugin will generate default configuration files.
 4. Configure `messages.yml`, `items-blacklist.yml`, and `config.yml` as needed.
