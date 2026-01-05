@@ -300,7 +300,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         armorStand.setMarker(true);
         armorStand.setSmall(true);
         armorStand.setCustomNameVisible(false);
-        armorStand.setItemInHand(new org.bukkit.inventory.ItemStack(item));
+        armorStand.getEquipment().setHelmet(new org.bukkit.inventory.ItemStack(item));
         
         itemDisplays.put(player, armorStand);
     }
@@ -315,6 +315,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     private void updateItemDisplay(Player player) {
         org.bukkit.entity.ArmorStand armorStand = itemDisplays.get(player);
         if (armorStand != null && !armorStand.isDead()) {
+            armorStand.setVelocity(player.getVelocity().clone().multiply(2));
             armorStand.teleportAsync(player.getLocation().add(0, 2.2, 0));
         }
     }
