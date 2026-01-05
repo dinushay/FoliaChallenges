@@ -269,7 +269,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     private void assignRandomItem(Player player) {
         List<Material> available = new ArrayList<>();
         for (Material m : Material.values()) {
-            if (m.isItem() && !configurableBlacklist.contains(m) && !hardcodedBlacklist.contains(m)) {
+            if (m.isItem() && ItemBlacklist.isObtainable(m) && !configurableBlacklist.contains(m)) {
                 available.add(m);
             }
         }
@@ -300,7 +300,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         armorStand.setMarker(true);
         armorStand.setSmall(true);
         armorStand.setCustomNameVisible(false);
-        armorStand.setItemInHand(new org.bukkit.inventory.ItemStack(item));
+        armorStand.getEquipment().setHelmet(new org.bukkit.inventory.ItemStack(item));
         
         itemDisplays.put(player, armorStand);
     }
@@ -315,6 +315,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     private void updateItemDisplay(Player player) {
         org.bukkit.entity.ArmorStand armorStand = itemDisplays.get(player);
         if (armorStand != null && !armorStand.isDead()) {
+            armorStand.setVelocity(player.getVelocity().clone().multiply(2));
             armorStand.teleportAsync(player.getLocation().add(0, 2.2, 0));
         }
     }
@@ -841,7 +842,11 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         FileConfiguration data = YamlConfiguration.loadConfiguration(dataFile);
         
         remainingSeconds = data.getLong("remainingSeconds", 0);
-        if (remainingSeconds > 0) timerSet = true;
+        if (remainingSeconds == 0) {
+            dataFile.delete();
+            return;
+        }
+        timerSet = true;
         
         if (data.contains("scores")) {
             data.getConfigurationSection("scores").getValues(false).forEach((k, v) -> {
