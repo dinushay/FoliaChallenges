@@ -269,7 +269,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     private void assignRandomItem(Player player) {
         List<Material> available = new ArrayList<>();
         for (Material m : Material.values()) {
-            if (m.isItem() && !configurableBlacklist.contains(m) && !hardcodedBlacklist.contains(m)) {
+            if (m.isItem() && ItemBlacklist.isObtainable(m) && !configurableBlacklist.contains(m)) {
                 available.add(m);
             }
         }
