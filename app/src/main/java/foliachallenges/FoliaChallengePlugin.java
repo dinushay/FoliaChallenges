@@ -166,8 +166,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             }
         }
 
-        sender.sendMessage(PREFIX + messages.getString("reset-initiated", "§aReset initiated. Switching world and refreshing seed..."));
-
         try {
             // IMPORTANT: Here we change the server.properties for the NEXT start
             rotateWorldAndResetSeed();
@@ -180,7 +178,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         // Shutdown after short delay
         getServer().getGlobalRegionScheduler().runDelayed(this, task -> {
             Bukkit.shutdown();
-        }, 20L); 
+        }, 60L); 
     }
 
     private void rotateWorldAndResetSeed() throws IOException {
@@ -566,8 +564,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         if (dataFile.exists()) {
             dataFile.delete();
         }
-        
-        sender.sendMessage(PREFIX + messages.getString("reset-data-cleared", "§cChallenge data has been reset!"));
     }
 
     private void stopTimer(CommandSender sender) {
