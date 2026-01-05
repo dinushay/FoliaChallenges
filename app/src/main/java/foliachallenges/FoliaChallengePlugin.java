@@ -755,14 +755,18 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
-        createBossBar(player);
+        if (player.getGameMode() == GameMode.SURVIVAL) {
+            createBossBar(player);
+        }
         
         if (assignedItems.containsKey(player.getUniqueId())) {
             createItemDisplay(player, assignedItems.get(player.getUniqueId()));
         } else if (timerRunning && player.getGameMode() == GameMode.SURVIVAL) {
             assignRandomItem(player);
         }
-        updateBossBar(player);
+        if (player.getGameMode() == GameMode.SURVIVAL) {
+            updateBossBar(player);
+        }
     }
 
     @EventHandler
@@ -815,7 +819,11 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         Player player = e.getPlayer();
         if (e.getNewGameMode() == GameMode.SURVIVAL) {
             BossBar bar = bossBars.get(player);
-            if (bar != null) bar.addPlayer(player);
+            if (bar == null) {
+                createBossBar(player);
+            } else {
+                bar.addPlayer(player);
+            }
             if (timerRunning) {
                 if (assignedItems.containsKey(player.getUniqueId())) {
                     createItemDisplay(player, assignedItems.get(player.getUniqueId()));
@@ -823,6 +831,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                     assignRandomItem(player);
                 }
             }
+            updateBossBar(player);
         } else {
             BossBar bar = bossBars.get(player);
             if (bar != null) bar.removePlayer(player);
