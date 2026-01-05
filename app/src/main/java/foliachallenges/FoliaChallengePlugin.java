@@ -764,9 +764,9 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         Material assigned = assignedItems.get(player.getUniqueId());
         if (assigned != null && event.getItem().getItemStack().getType() == assigned) {
             scores.put(player.getUniqueId(), scores.getOrDefault(player.getUniqueId(), 0) + 1);
-            assignRandomItem(player);
-            player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
             player.sendMessage(PREFIX + messages.getString("item-found", "You've found §e%item%").replace("%item%", assigned.name()));
+            player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+            assignRandomItem(player);
         }
     }
     
