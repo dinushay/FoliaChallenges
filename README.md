@@ -12,13 +12,11 @@ A Minecraft challenge plugin only for Folia servers for challenges (like Random 
 
 ## Roadmap
 
-Currently, as I write this, only the "Random Item Battle" challenge is available. I plan to add more challenges of this type, such as "Random Mob Battle". For more ideas: please open a GitHub issue.
+Currently, as I write this (January 5th, 2026), only the "Random Item Battle" challenge is available. I plan to add more challenges of this type, such as "Random Mob Battle". For more ideas: please open a GitHub issue.
 
 🟢 = Random Item Battle
 
 🔴 = **Jokers, Double targets and whether the item ends up in the inventory when a joker is used** for Random Item Battle configurable via a settings GUI
-
-🔴 = Fix the "Bossbar bug"
 
 🔴 = Random Mob Battle
 
@@ -27,7 +25,6 @@ Currently, as I write this, only the "Random Item Battle" challenge is available
 
 ## Installation
 
-![Modrinth Downloads](https://img.shields.io/modrinth/dt/foliachallenges?style=flat&logo=modrinth&label=Downloads)
 1. Download the latest `FoliaChallenges.jar` from the [Modrinth page](https://modrinth.com/project/foliachallenges).
 2. Place the JAR file in your server's `plugins` folder.
 3. Restart the server. The plugin will generate default configuration files.
@@ -35,7 +32,7 @@ Currently, as I write this, only the "Random Item Battle" challenge is available
 
 ### Requirements
 
-- **Server**: Folia 1.21.x
+- **Server**:  Made for Folia 1.21.8+
 - **Java**: 17 or higher
 
 ## Configuration
@@ -84,8 +81,6 @@ General settings.
 ## Contributing
 
 Feel free to submit issues or pull requests on Github. I don't plan to include challenges that aren't designed for where the players are spread out.
-
-Also, please contribute to the [ItemBlacklist.java](https://github.com/dinushay/FoliaChallenges/blob/main/app/src/main/java/foliachallenges/ItemBlacklist.java) list.
 
 ## License
 
