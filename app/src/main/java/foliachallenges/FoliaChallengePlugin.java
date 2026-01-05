@@ -178,7 +178,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         // Shutdown after short delay
         getServer().getGlobalRegionScheduler().runDelayed(this, task -> {
             Bukkit.shutdown();
-        }, 60L); 
+        }, 20L); 
     }
 
     private void rotateWorldAndResetSeed() throws IOException {
