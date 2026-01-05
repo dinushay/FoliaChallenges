@@ -38,4 +38,27 @@ public class ItemBlacklist {
         Material.FIRE,
         Material.SOUL_FIRE
     );
+    
+    public static boolean isObtainable(Material material) {
+        if (HARDCODED_BLACKLIST.contains(material)) return false;
+        String name = material.name();
+        if (name.endsWith("_SPAWN_EGG")) return false;
+        if (name.startsWith("LEGACY_")) return false;
+        switch (name) {
+            case "LARGE_FERN":
+            case "TALL_GRASS":
+            case "TALL_SEAGRASS":
+            case "CHORUS_PLANT":
+            case "PETRIFIED_OAK_SLAB":
+            case "PLAYER_HEAD":
+            case "GLOBE_BANNER_PATTERN":
+            case "VAULT":
+            case "AMETHYST_CLUSTER":
+            case "POWDER_SNOW":
+            case "BUNDLE":
+            case "TEST":
+                return false;
+        }
+        return true;
+    }
 } // # Items that are impossible to obtain for the challenge are added here from time to time. Please continue to contribute to this list.
