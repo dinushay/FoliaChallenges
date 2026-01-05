@@ -47,26 +47,17 @@ jobs:
       uses: cloudnode-pro/modrinth-publish@v2.1.7
       with:
         token: ${{ secrets.MODRINTH_TOKEN }}
-        
         project: 'QSSFb4tn'
-        
         name: ${{ env.COMMIT_TITLE }}
-        
         version: ${{ env.PROJECT_VERSION }}.${{ env.UNIX_TIME }}
-        
         channel: 'alpha'
-        
         changelog: ${{ env.COMMIT_BODY }}
-        
         loaders: |
           folia
-        
         game-versions: |
           1.21.8
           1.21.9
           1.21.10
           1.21.11
         
-        # File to upload
-        files: |
-          app/build/libs/FoliaChallenges.jar
+        files: '["app/build/libs/FoliaChallenges.jar"]'
