@@ -67,7 +67,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     private RegionScheduler regionScheduler;
     
     private List<Material> configurableBlacklist = new ArrayList<>();
-    private List<Material> hardcodedBlacklist = Arrays.asList(Material.AIR);
+    private List<Material> hardcodedBlacklist = ItemBlacklist.HARDCODED_BLACKLIST;
     
     private Map<UUID, Material> assignedItems = new HashMap<>();
     private Map<UUID, Integer> scores = new HashMap<>();
