@@ -26,6 +26,7 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import io.papermc.paper.threadedregions.scheduler.GlobalRegionScheduler;
+import io.papermc.paper.threadedregions.scheduler.RegionScheduler;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 
 import java.io.File;
@@ -63,6 +64,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     private ScheduledTask timerTask;
     private ScheduledTask saveTask;
     private GlobalRegionScheduler scheduler;
+    private RegionScheduler regionScheduler;
     
     private List<Material> configurableBlacklist = new ArrayList<>();
     private List<Material> hardcodedBlacklist = Arrays.asList(Material.AIR);
@@ -97,6 +99,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         getLogger().info(messages.getString("plugin-enabled", "FoliaChallenge enabled!"));
         
         this.scheduler = getServer().getGlobalRegionScheduler();
+        this.regionScheduler = getServer().getRegionScheduler();
         scheduler.run(this, task -> pauseWorlds());
         
         actionBarTask = scheduler.runAtFixedRate(this, task -> updateActionBar(), 1, 10);
@@ -542,7 +545,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         assignedItems.clear();
         
         for (Player p : getServer().getOnlinePlayers()) {
-            removeItemDisplay(p);
+            regionScheduler.run(this, p.getLocation(), task -> removeItemDisplay(p));
             updateBossBar(p);
         }
         
@@ -564,7 +567,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         if (saveTask != null) saveTask.cancel();
         
         for (Player p : getServer().getOnlinePlayers()) {
-            removeItemDisplay(p);
+            regionScheduler.run(this, p.getLocation(), task -> removeItemDisplay(p));
             updateBossBar(p);
         }
         
