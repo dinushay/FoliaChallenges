@@ -30,14 +30,19 @@ jobs:
       run: |
         echo "UNIX_TIME=$(date +%s)" >> $GITHUB_ENV
         
-        # ÄNDERUNG: Wir fragen jetzt explizit das Modul 'app' ab!
-        # Wir nutzen awk etwas robuster, falls Leerzeichen stören.
-        VERSION=$(./gradlew app:properties -q | grep "^version:" | awk '{print $2}')
+        VERSION=$(grep "^version:" app/src/main/resources/plugin.yml | awk '{print $2}')
         
-        # Debugging: Zeige die gefundene Version im Log an, damit wir sicher sind
+        VERSION=$(echo "$VERSION" | tr -d "'\"")
+        
+        if [ -z "$VERSION" ]; then
+             echo "WARNUNG: Version nicht in plugin.yml gefunden! Setze Fallback."
+             VERSION="1.0"
+        fi
+        
         echo "Gefundene Version: $VERSION"
-        
         echo "PROJECT_VERSION=$VERSION" >> $GITHUB_ENV
+        
+        # ------------------------------------
         
         echo "COMMIT_TITLE=$(git log -1 --pretty=%s)" >> $GITHUB_ENV
         
