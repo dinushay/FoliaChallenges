@@ -622,18 +622,22 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
 
         getServer().broadcastMessage(PREFIX + messages.getString("color-title", "§6§l") + messages.getString("leaderboard-title", "§6=== Challenge Results ==="));
         
-        int rank = 1;
-        for (int i = 0; i < sortedScores.size(); i++) {
-            if (i > 0 && !sortedScores.get(i).getValue().equals(sortedScores.get(i-1).getValue())) rank = i + 1;
-            
-            String pName = Bukkit.getOfflinePlayer(sortedScores.get(i).getKey()).getName();
-            if (pName == null) pName = "Unknown";
-            
-            String entry = messages.getString("leaderboard-entry", "#%rank% %player% §r- §a%points% Points")
-                .replace("%rank%", String.valueOf(rank))
-                .replace("%player%", pName)
-                .replace("%points%", String.valueOf(sortedScores.get(i).getValue()));
-            getServer().broadcastMessage(PREFIX + messages.getString("color-rank", "§e") + entry);
+        if (sortedScores.isEmpty()) {
+            getServer().broadcastMessage(PREFIX + messages.getString("no-results", "§7No results to display."));
+        } else {
+            int rank = 1;
+            for (int i = 0; i < sortedScores.size(); i++) {
+                if (i > 0 && !sortedScores.get(i).getValue().equals(sortedScores.get(i-1).getValue())) rank = i + 1;
+                
+                String pName = Bukkit.getOfflinePlayer(sortedScores.get(i).getKey()).getName();
+                if (pName == null) pName = "Unknown";
+                
+                String entry = messages.getString("leaderboard-entry", "#%rank% %player% §r- §a%points% Points")
+                    .replace("%rank%", String.valueOf(rank))
+                    .replace("%player%", pName)
+                    .replace("%points%", String.valueOf(sortedScores.get(i).getValue()));
+                getServer().broadcastMessage(PREFIX + messages.getString("color-rank", "§e") + entry);
+            }
         }
         
         getServer().broadcastMessage(PREFIX + messages.getString("color-separator", "§6§l========================"));
@@ -648,23 +652,33 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
 
     private void listItems(CommandSender sender) {
         sender.sendMessage(PREFIX + messages.getString("assigned-items-title", "§6=== Assigned Items ==="));
-        assignedItems.forEach((uuid, mat) -> {
-            Player p = Bukkit.getPlayer(uuid);
-            if (p != null) {
-                 sender.sendMessage(PREFIX + messages.getString("list-item-entry", "§e%player% §r- §a%item%").replace("%player%", p.getName()).replace("%item%", formatItemName(mat.name())));
-            }
-        });
+        if (assignedItems.isEmpty()) {
+            sender.sendMessage(PREFIX + messages.getString("no-assigned-items", "§7No items assigned yet."));
+        } else {
+            assignedItems.forEach((uuid, mat) -> {
+                Player p = Bukkit.getPlayer(uuid);
+                if (p != null) {
+                     sender.sendMessage(PREFIX + messages.getString("list-item-entry", "§e%player% §r- §a%item%").replace("%player%", p.getName()).replace("%item%", formatItemName(mat.name())));
+                }
+            });
+        }
         sender.sendMessage(PREFIX + messages.getString("color-separator", "§6§l==================="));
     }
 
     private void listPoints(CommandSender sender) {
         sender.sendMessage(PREFIX + messages.getString("player-points-title", "§6==== Player Points ===="));
+        List<String> pointMessages = new ArrayList<>();
         scores.forEach((uuid, points) -> {
              Player p = Bukkit.getPlayer(uuid);
              if (p != null && points > 0) {
-                 sender.sendMessage(PREFIX + messages.getString("list-points-entry", "§e%player% §r- §a%points% Points").replace("%player%", p.getName()).replace("%points%", String.valueOf(points)));
+                 pointMessages.add(PREFIX + messages.getString("list-points-entry", "§e%player% §r- §a%points% Points").replace("%player%", p.getName()).replace("%points%", String.valueOf(points)));
              }
         });
+        if (pointMessages.isEmpty()) {
+            sender.sendMessage(PREFIX + messages.getString("no-points", "§7No points recorded yet."));
+        } else {
+            pointMessages.forEach(sender::sendMessage);
+        }
         sender.sendMessage(PREFIX + messages.getString("color-separator", "§6§l==================="));
     }
 
