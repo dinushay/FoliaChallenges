@@ -74,7 +74,7 @@ General settings.
 | `/timer start` | Start the challenge timer | `foliachallenges.admin` |
 | `/timer stop` | Stop the challenge timer | `foliachallenges.admin` |
 | `/timer set <minutes>` | Set the timer duration | `foliachallenges.admin` |
-| `start` | Start the challenge timer | `foliachallenges.admin` |
+| `/start` | Start the challenge timer | `foliachallenges.admin` |
 | `/reset confirm` | Reset the world (irreversible!) | `foliachallenges.admin` |
 
 ### Permissions
@@ -84,6 +84,8 @@ General settings.
 ## Contributing
 
 Feel free to submit issues or pull requests on Github. I don't plan to include challenges that aren't designed for where the players are spread out.
+
+Also, please contribute to the [ItemBlacklist.java](https://github.com/dinushay/FoliaChallenges/blob/main/app/src/main/java/foliachallenges/ItemBlacklist.java) list.
 
 ## License
 
