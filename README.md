@@ -18,6 +18,8 @@ Currently, as I write this, only the "Random Item Battle" challenge is available
 
 🔴 = **Jokers, Double targets and whether the item ends up in the inventory when a joker is used** for Random Item Battle configurable via a settings GUI
 
+🔴 = Fix the "Bossbar bug"
+
 🔴 = Random Mob Battle
 
 `🟢 = Available`
