@@ -1,0 +1,76 @@
+timer-not-set: "§7• §cZeit wurde nicht gesetzt §7•"
+timer-display: "§7• §rZeit: %time% §7•"
+timer-paused-title: "STOP!"
+timer-paused-subtitle: "Der Timer ist pausiert!"
+timer-started-global: "§aDer Challenge-Timer wurde gestartet!"
+item-found: "§aDu hast dein Item gefunden! Neues Item zugewiesen."
+item-blacklisted-reassigned: "§eDas Item %item% wurde geblacklistet. Du hast ein neues Item zugewiesen bekommen!"
+timer-stopped-global: "§cDer Challenge-Timer wurde gestoppt!"
+timer-set: "Timer auf §6%minutes% Minuten§7 gesetzt!"
+invalid-minutes: "§4Ungültige Minutenanzahl!"
+timer-not-set-message: "§cTimer nicht gesetzt!"
+timer-already-running: "Timer läuft bereits!"
+timer-not-running: "Timer läuft nicht!"
+timer-expired: "§cTimer ist abgelaufen! §7Setze eine neue Zeit mit §l/timer set <minuten>§r§7."
+usage: "Benutze §6/challenges help §7um die Command-Liste zu sehen"
+no-permission: "§cDu hast keine berechtigung für diesen command!"
+assigned-items-title: "§6=== Zugewiesene Items ==="
+player-points-title: "§6==== Spieler Punkte ===="
+leaderboard-title: "§6=== Challenge Ergebnisse ==="
+leaderboard-entry: "#%rank% %player% §r- §a%points% Punkte"
+list-item-entry: "§e%player% §r- §a%item%"
+list-points-entry: "§e%player% §r- §a%points% Punkte"
+bossbar-item: "Aktuelles Item: §e%item%"
+bossbar-paused: "§cTimer pausiert"
+bossbar-default: "Aktuelles Item: -"
+plugin-enabled: "§aFoliaChallenge aktiviert!"
+plugin-disabled: "§cFoliaChallenge deaktiviert!"
+cleanup-start: "Alte Welten ordner werden aufgeräumt..."
+cleanup-skip-active: "Überspringe das Löschen von %world%, da diese derzeit aktiv ist! Sie wird für den nächsten Neustart vorgemerkt."
+cleanup-delete-failed: "%world% konnte nicht vollständig gelöscht werden. Sie verbleibt in der Warteschlange."
+cleanup-deleting-folder: "Lösche inaktiven Weltordner: %folder%"
+cleanup-delete-path-failed: "Fehler beim Löschen von: %path%"
+cleanup-walk-error: "Fehler beim Durchlaufen des Verzeichnisses: %folder%"
+reset-initiated: "§aReset eingeleitet. Welt wird gewechselt und der Seed erneuert..."
+reset-error-properties: "§cFehler beim Bearbeiten der server.properties: %error%"
+reset-warning-1: "§4§lWARNUNG: §cBitte bestätige den Reset Befehl!"
+reset-warning-2: "§cDieser Befehl löscht alle §lChallenge-Daten §r§cund §lgeneriert eine neue Welt§c!"
+reset-confirm-usage: "§7Nutze §c/reset confirm§7, um fortzufahren."
+reset-data-cleared: "§cChallenge-Daten wurden zurückgesetzt!"
+reset-kick-message: |
+  §8————————————————————
+
+  §8» §cServerreset
+
+  §7Reset durch §4§l%player%
+  §r§7Der Server startet nun §cneu
+
+  §8————————————————————
+item-already-blacklisted: "§cItem ist bereits auf der Blacklist!"
+item-blacklisted: "§aItem zur Blacklist hinzugefügt!"
+block-item-error: "§cFehler: %error%"
+save-data-error: "Konnte data.yml nicht speichern"
+copy-resource-error: "Ressource %filename% konnte nicht kopiert werden"
+invalid-blacklist-material: "Ungültiges Material in der Blacklist: %item%"
+help-message: |
+  §6§l=== FoliaChallenges Hilfe ===
+  §e/timer start §7- Startet den Challenge-Timer
+  §e/timer stop §7- Stoppt den Challenge-Timer
+  §e/timer set <Minuten> §7- Setzt die Dauer des Timers
+  §e/start §7- Startet den Challenge-Timer
+  §e/challenges randomitembattle listitems §7- Listet zugewiesene Items auf
+  §e/challenges randomitembattle listpoints §7- Zeigt die Spielerpunkte an
+  §e/challenges randomitembattle blockitem <Item> §7- Sperrt ein Item (Blacklist) und skippt diese
+  §e/challenges reload §7- Lädt Konfiguration und Nachrichten neu
+  §e/reset confirm §7- Setzt die Welt zurück (Vorsicht!)
+  §6§l========================
+#color codes
+color-title: "§6§l"
+color-separator: "§6§l==================="
+color-player: "§f"
+color-separator-small: "§7- §a"
+color-rank: "§e"
+color-no-data: "§7"
+color-timer-running: "§a"
+color-timer-paused: "§c"
+color-timer-not-set: "§e"
