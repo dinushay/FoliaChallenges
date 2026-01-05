@@ -516,7 +516,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         }
         
         timerRunning = true;
-        scheduler.run(this, task -> pauseWorlds());
+        scheduler.run(this, task -> resumeWorlds());
         
         for (Player p : getServer().getOnlinePlayers()) {
             if (p.getGameMode() == GameMode.SURVIVAL) {
@@ -570,7 +570,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             return;
         }
         timerRunning = false;
-        scheduler.run(this, task -> resumeWorlds());
+        scheduler.run(this, task -> pauseWorlds());
         if (timerTask != null) timerTask.cancel();
         if (saveTask != null) saveTask.cancel();
         
@@ -602,7 +602,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                 timerRunning = false;
                 if (saveTask != null) saveTask.cancel();
                 scheduler.run(this, t -> {
-                    resumeWorlds();
+                    pauseWorlds();
                     for (Player p : getServer().getOnlinePlayers()) {
                         regionScheduler.run(this, p.getLocation(), removeTask -> removeItemDisplay(p));
                     }
