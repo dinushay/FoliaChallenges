@@ -603,7 +603,9 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                 if (saveTask != null) saveTask.cancel();
                 scheduler.run(this, t -> {
                     resumeWorlds();
-                    for (Player p : getServer().getOnlinePlayers()) removeItemDisplay(p);
+                    for (Player p : getServer().getOnlinePlayers()) {
+                        regionScheduler.run(this, p.getLocation(), removeTask -> removeItemDisplay(p));
+                    }
                 });
                 endChallenge();
                 updateActionBar();
@@ -613,7 +615,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     }
 
     private void endChallenge() {
-        itemDisplays.clear();
         
         List<Map.Entry<UUID, Integer>> sortedScores = scores.entrySet().stream()
             .sorted(Map.Entry.<UUID, Integer>comparingByValue().reversed())
