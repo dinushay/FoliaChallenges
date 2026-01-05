@@ -829,7 +829,11 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         FileConfiguration data = YamlConfiguration.loadConfiguration(dataFile);
         
         remainingSeconds = data.getLong("remainingSeconds", 0);
-        if (remainingSeconds > 0) timerSet = true;
+        if (remainingSeconds == 0) {
+            dataFile.delete();
+            return;
+        }
+        timerSet = true;
         
         if (data.contains("scores")) {
             data.getConfigurationSection("scores").getValues(false).forEach((k, v) -> {
