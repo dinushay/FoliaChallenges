@@ -322,6 +322,16 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     private void updateBossBar(Player player) {
         BossBar bar = bossBars.get(player);
         if (bar != null) {
+            // --- FIX START ---
+            // Wenn der Spieler nicht im Survival ist, BossBar ausblenden und abbrechen
+            if (player.getGameMode() != GameMode.SURVIVAL) {
+                bar.setVisible(false);
+                return;
+            }
+            // Ansonsten sicherstellen, dass sie sichtbar ist
+            bar.setVisible(true);
+            // --- FIX END ---
+
             Material item = assignedItems.get(player.getUniqueId());
             if (item != null) {
                 String itemName = formatItemName(item.name());
