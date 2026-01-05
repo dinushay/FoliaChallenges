@@ -29,8 +29,16 @@ jobs:
       id: meta
       run: |
         echo "UNIX_TIME=$(date +%s)" >> $GITHUB_ENV
-        VERSION=$(./gradlew properties -q | grep "^version:" | awk '{print $2}')
+        
+        # ÄNDERUNG: Wir fragen jetzt explizit das Modul 'app' ab!
+        # Wir nutzen awk etwas robuster, falls Leerzeichen stören.
+        VERSION=$(./gradlew app:properties -q | grep "^version:" | awk '{print $2}')
+        
+        # Debugging: Zeige die gefundene Version im Log an, damit wir sicher sind
+        echo "Gefundene Version: $VERSION"
+        
         echo "PROJECT_VERSION=$VERSION" >> $GITHUB_ENV
+        
         echo "COMMIT_TITLE=$(git log -1 --pretty=%s)" >> $GITHUB_ENV
         
         EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
@@ -45,14 +53,13 @@ jobs:
       uses: cloudnode-pro/modrinth-publish@v2.1.7
       with:
         token: ${{ secrets.MODRINTH_TOKEN }}
-        project: 'QSSFb4tn' 
+        project: 'QSSFb4tn'
         name: ${{ env.COMMIT_TITLE }}
+        
         version: ${{ env.PROJECT_VERSION }}.${{ env.UNIX_TIME }}
+        
         channel: 'alpha'
         changelog: ${{ env.COMMIT_BODY }}
-        
         loaders: '["folia"]'
-        
         game-versions: '["1.21.8", "1.21.9", "1.21.10", "1.21.11"]'
-        
         files: '["app/build/libs/FoliaChallenges.jar"]'
