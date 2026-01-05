@@ -544,6 +544,12 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         scores.clear();
         assignedItems.clear();
         
+        // Reset timer variables
+        remainingSeconds = 0;
+        timerSeconds = 0;
+        timerSet = false;
+        timerRunning = false;
+        
         for (Player p : getServer().getOnlinePlayers()) {
             regionScheduler.run(this, p.getLocation(), task -> removeItemDisplay(p));
             updateBossBar(p);
