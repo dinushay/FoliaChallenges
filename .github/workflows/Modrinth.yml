@@ -46,7 +46,7 @@ jobs:
         
         echo "COMMIT_BODY<<$EOF" >> $GITHUB_ENV
         
-        echo "## $RAW_TITLE" >> $GITHUB_ENV
+        echo "$RAW_TITLE" >> $GITHUB_ENV
         echo "" >> $GITHUB_ENV
         git log -1 --pretty=%b >> $GITHUB_ENV
         echo "" >> $GITHUB_ENV
