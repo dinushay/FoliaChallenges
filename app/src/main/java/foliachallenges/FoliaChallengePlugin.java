@@ -789,6 +789,9 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     public void onGMChange(PlayerGameModeChangeEvent e) {
         scheduler.run(this, task -> {
             Player p = e.getPlayer();
+            if (!p.isOnline()) {
+                return;
+            }
             if (p.getGameMode() == GameMode.SURVIVAL) {
                 if (timerRunning) {
                     if (!assignedItems.containsKey(p.getUniqueId())) {
