@@ -796,8 +796,21 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     public void onTarget(EntityTargetLivingEntityEvent e) { if (e.getTarget() instanceof Player && !timerRunning && ((Player)e.getTarget()).getGameMode() == GameMode.SURVIVAL) e.setCancelled(true); }
     @EventHandler
     public void onGMChange(PlayerGameModeChangeEvent e) {
-        if (e.getNewGameMode() == GameMode.SURVIVAL && timerRunning && !assignedItems.containsKey(e.getPlayer().getUniqueId())) {
-            assignRandomItem(e.getPlayer());
+        Player player = e.getPlayer();
+        if (e.getNewGameMode() == GameMode.SURVIVAL) {
+            BossBar bar = bossBars.get(player);
+            if (bar != null) bar.addPlayer(player);
+            if (timerRunning) {
+                if (assignedItems.containsKey(player.getUniqueId())) {
+                    createItemDisplay(player, assignedItems.get(player.getUniqueId()));
+                } else {
+                    assignRandomItem(player);
+                }
+            }
+        } else {
+            BossBar bar = bossBars.get(player);
+            if (bar != null) bar.removePlayer(player);
+            removeItemDisplay(player);
         }
     }
 
