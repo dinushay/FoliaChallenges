@@ -908,35 +908,32 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         Inventory gui = Bukkit.createInventory(null, 9, settingsGUITitle);
 
         // Item 1: Joker
-        String jokerName = messages.getString("settings-joker-name", "Joker");
-        Material jokerMaterial = Material.valueOf(messages.getString("settings-joker-material", "DIAMOND").toUpperCase());
-        String jokerLore = messages.getString("settings-joker-lore", "Enable Joker feature");
-        ItemStack joker = new ItemStack(jokerMaterial);
+        String jokerName = messages.getString("settings-joker-name", "§6Amount of jokers");
+        String jokerLore = messages.getString("settings-joker-lore", "§7The §6amount§7 of §6jokers§7 a player can use");
+        ItemStack joker = new ItemStack(Material.BARRIER);
         ItemMeta jokerMeta = joker.getItemMeta();
-        jokerMeta.setDisplayName("§6" + jokerName);
-        jokerMeta.setLore(Arrays.asList("§7" + jokerLore));
+        jokerMeta.setDisplayName(jokerName);
+        jokerMeta.setLore(Arrays.asList(jokerLore));
         joker.setItemMeta(jokerMeta);
         gui.setItem(2, joker);
 
         // Item 2: Doppelte Ziele
-        String duplicateName = messages.getString("settings-duplicate-name", "Duplicate Targets");
-        Material duplicateMaterial = Material.valueOf(messages.getString("settings-duplicate-material", "GOLD_INGOT").toUpperCase());
-        String duplicateLore = messages.getString("settings-duplicate-lore", "Allow duplicate items in session");
-        ItemStack duplicate = new ItemStack(duplicateMaterial);
+        String duplicateName = messages.getString("settings-duplicate-name", "§cDuplicate Targets");
+        String duplicateLore = messages.getString("settings-duplicate-lore", "§7Targets can occour §cmultiple times§7 in a session");
+        ItemStack duplicate = new ItemStack(Material.PAPER);
         ItemMeta duplicateMeta = duplicate.getItemMeta();
-        duplicateMeta.setDisplayName("§6" + duplicateName);
-        duplicateMeta.setLore(Arrays.asList("§7" + duplicateLore));
+        duplicateMeta.setDisplayName(duplicateName);
+        duplicateMeta.setLore(Arrays.asList(duplicateLore));
         duplicate.setItemMeta(duplicateMeta);
         gui.setItem(4, duplicate);
 
         // Item 3: Joker gibt Item
-        String jokerGivesName = messages.getString("settings-joker-gives-item-name", "Joker Gives Item");
-        Material jokerGivesMaterial = Material.valueOf(messages.getString("settings-joker-gives-item-material", "EMERALD").toUpperCase());
-        String jokerGivesLore = messages.getString("settings-joker-gives-item-lore", "Using Joker gives the item");
-        ItemStack jokerGives = new ItemStack(jokerGivesMaterial);
+        String jokerGivesName = messages.getString("settings-joker-gives-item-name", "§bGive item on joker");
+        String jokerGivesLore = messages.getString("settings-joker-gives-item-lore", "§7If a player uses a §bjoker§7, they also §breceive§7 the item");
+        ItemStack jokerGives = new ItemStack(Material.CHEST);
         ItemMeta jokerGivesMeta = jokerGives.getItemMeta();
-        jokerGivesMeta.setDisplayName("§6" + jokerGivesName);
-        jokerGivesMeta.setLore(Arrays.asList("§7" + jokerGivesLore));
+        jokerGivesMeta.setDisplayName(jokerGivesName);
+        jokerGivesMeta.setLore(Arrays.asList(jokerGivesLore));
         jokerGives.setItemMeta(jokerGivesMeta);
         gui.setItem(6, jokerGives);
 
