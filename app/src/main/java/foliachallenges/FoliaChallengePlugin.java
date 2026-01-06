@@ -59,6 +59,8 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
 
     private static final String PREFIX = "§8§l┃ §bFoliaChallenges §8┃§7 ";
 
+    private String settingsGUITitle;
+
     private FileConfiguration config;
     private FileConfiguration messages;
     private long timerSeconds = 0;
@@ -87,6 +89,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         saveDefaultItemBlacklist();
         config = getConfig();
         messages = YamlConfiguration.loadConfiguration(new File(getDataFolder(), "messages.yml"));
+        settingsGUITitle = messages.getString("settings-gui-color", "§b§l") + messages.getString("settings-gui-title", "Random Item Battle Settings");
         loadConfigurableBlacklist();
         getServer().getPluginManager().registerEvents(this, this);
         
@@ -439,6 +442,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                 } else if (subCmd.equals("reload")) {
                     reloadConfig();
                     messages = YamlConfiguration.loadConfiguration(new File(getDataFolder(), "messages.yml"));
+                    settingsGUITitle = messages.getString("settings-gui-color", "§b§l") + messages.getString("settings-gui-title", "Random Item Battle Settings");
                     sender.sendMessage(PREFIX + "Configuration and messages reloaded!");
                     return true;
                 } else if (subCmd.equals("help")) {
@@ -901,38 +905,47 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     }
 
     private void openSettingsGUI(Player player) {
-        Inventory gui = Bukkit.createInventory(null, 9, "Random Item Battle Settings");
+        Inventory gui = Bukkit.createInventory(null, 9, settingsGUITitle);
 
         // Item 1: Joker
-        ItemStack joker = new ItemStack(Material.DIAMOND);
+        String jokerName = messages.getString("settings-joker-name", "Joker");
+        Material jokerMaterial = Material.valueOf(messages.getString("settings-joker-material", "DIAMOND").toUpperCase());
+        String jokerLore = messages.getString("settings-joker-lore", "Enable Joker feature");
+        ItemStack joker = new ItemStack(jokerMaterial);
         ItemMeta jokerMeta = joker.getItemMeta();
-        jokerMeta.setDisplayName("§6Joker");
-        jokerMeta.setLore(Arrays.asList("§7Enable Joker feature"));
+        jokerMeta.setDisplayName("§6" + jokerName);
+        jokerMeta.setLore(Arrays.asList("§7" + jokerLore));
         joker.setItemMeta(jokerMeta);
         gui.setItem(2, joker);
 
         // Item 2: Doppelte Ziele
-        ItemStack doppelteZiele = new ItemStack(Material.GOLD_INGOT);
-        ItemMeta dzMeta = doppelteZiele.getItemMeta();
-        dzMeta.setDisplayName("§6Doppelte Ziele");
-        dzMeta.setLore(Arrays.asList("§7Allow duplicate items in session"));
-        doppelteZiele.setItemMeta(dzMeta);
-        gui.setItem(4, doppelteZiele);
+        String duplicateName = messages.getString("settings-duplicate-name", "Duplicate Targets");
+        Material duplicateMaterial = Material.valueOf(messages.getString("settings-duplicate-material", "GOLD_INGOT").toUpperCase());
+        String duplicateLore = messages.getString("settings-duplicate-lore", "Allow duplicate items in session");
+        ItemStack duplicate = new ItemStack(duplicateMaterial);
+        ItemMeta duplicateMeta = duplicate.getItemMeta();
+        duplicateMeta.setDisplayName("§6" + duplicateName);
+        duplicateMeta.setLore(Arrays.asList("§7" + duplicateLore));
+        duplicate.setItemMeta(duplicateMeta);
+        gui.setItem(4, duplicate);
 
         // Item 3: Joker gibt Item
-        ItemStack jokerGibtItem = new ItemStack(Material.EMERALD);
-        ItemMeta jgiMeta = jokerGibtItem.getItemMeta();
-        jgiMeta.setDisplayName("§6Joker gibt Item");
-        jgiMeta.setLore(Arrays.asList("§7Using Joker gives the item"));
-        jokerGibtItem.setItemMeta(jgiMeta);
-        gui.setItem(6, jokerGibtItem);
+        String jokerGivesName = messages.getString("settings-joker-gives-item-name", "Joker Gives Item");
+        Material jokerGivesMaterial = Material.valueOf(messages.getString("settings-joker-gives-item-material", "EMERALD").toUpperCase());
+        String jokerGivesLore = messages.getString("settings-joker-gives-item-lore", "Using Joker gives the item");
+        ItemStack jokerGives = new ItemStack(jokerGivesMaterial);
+        ItemMeta jokerGivesMeta = jokerGives.getItemMeta();
+        jokerGivesMeta.setDisplayName("§6" + jokerGivesName);
+        jokerGivesMeta.setLore(Arrays.asList("§7" + jokerGivesLore));
+        jokerGives.setItemMeta(jokerGivesMeta);
+        gui.setItem(6, jokerGives);
 
         player.openInventory(gui);
     }
 
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
-        if (event.getView().getTitle().equals("Random Item Battle Settings")) {
+        if (event.getView().getTitle().equals(settingsGUITitle)) {
             event.setCancelled(true);
         }
     }
