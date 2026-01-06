@@ -23,6 +23,11 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerPickupItemEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+
 import org.bukkit.plugin.java.JavaPlugin;
 
 import io.papermc.paper.threadedregions.scheduler.GlobalRegionScheduler;
@@ -423,6 +428,13 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                         }
                         blockItem(sender, args[2]);
                         return true;
+                    } else if (args[1].equalsIgnoreCase("settings")) {
+                        if (!(sender instanceof Player)) {
+                            sender.sendMessage(PREFIX + "Only players can open the settings GUI!");
+                            return true;
+                        }
+                        openSettingsGUI((Player) sender);
+                        return true;
                     }
                 } else if (subCmd.equals("reload")) {
                     reloadConfig();
@@ -485,7 +497,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
 
         if (cmdName.equals("challenges")) {
             if (args.length == 1) return filter(args[0], Arrays.asList("randomitembattle", "reload", "help"));
-            if (args.length == 2 && args[0].equalsIgnoreCase("randomitembattle")) return filter(args[1], Arrays.asList("listitems", "listpoints", "blockitem"));
+            if (args.length == 2 && args[0].equalsIgnoreCase("randomitembattle")) return filter(args[1], Arrays.asList("listitems", "listpoints", "blockitem", "settings"));
             if (args.length == 3 && args[1].equalsIgnoreCase("blockitem")) {
                 return Arrays.stream(Material.values()).filter(Material::isItem).map(Material::name).map(String::toLowerCase)
                         .filter(n -> n.startsWith(args[2].toLowerCase())).collect(Collectors.toList());
@@ -885,6 +897,43 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     }
 
     private void sendHelp(CommandSender sender) {
-        sender.sendMessage(PREFIX + messages.getString("help-message", "§6§l=== FoliaChallenges Help ===\n§e/timer start §7- Start the challenge timer\n§e/timer stop §7- Stop the challenge timer\n§e/timer set <minutes> §7- Set the timer duration\n§e/challenges randomitembattle listitems §7- List assigned items\n§e/challenges randomitembattle listpoints §7- List player points\n§e/challenges randomitembattle blockitem <item> §7- Block an item\n§e/challenges reload §7- Reload config and messages\n§e/reset confirm §7- Reset the world (use with caution)\n§6§l========================"));
+        sender.sendMessage(PREFIX + messages.getString("help-message", "§6§l=== FoliaChallenges Help ===\n§e/timer start §7- Start the challenge timer\n§e/timer stop §7- Stop the challenge timer\n§e/timer set <minutes> §7- Set the timer duration\n§e/challenges randomitembattle listitems §7- List assigned items\n§e/challenges randomitembattle listpoints §7- List player points\n§e/challenges randomitembattle blockitem <item> §7- Block an item\n§e/challenges randomitembattle settings §7- Open settings GUI\n§e/challenges reload §7- Reload config and messages\n§e/reset confirm §7- Reset the world (use with caution)\n§6§l========================"));
+    }
+
+    private void openSettingsGUI(Player player) {
+        Inventory gui = Bukkit.createInventory(null, 9, "Random Item Battle Settings");
+
+        // Item 1: Joker
+        ItemStack joker = new ItemStack(Material.DIAMOND);
+        ItemMeta jokerMeta = joker.getItemMeta();
+        jokerMeta.setDisplayName("§6Joker");
+        jokerMeta.setLore(Arrays.asList("§7Enable Joker feature"));
+        joker.setItemMeta(jokerMeta);
+        gui.setItem(2, joker);
+
+        // Item 2: Doppelte Ziele
+        ItemStack doppelteZiele = new ItemStack(Material.GOLD_INGOT);
+        ItemMeta dzMeta = doppelteZiele.getItemMeta();
+        dzMeta.setDisplayName("§6Doppelte Ziele");
+        dzMeta.setLore(Arrays.asList("§7Allow duplicate items in session"));
+        doppelteZiele.setItemMeta(dzMeta);
+        gui.setItem(4, doppelteZiele);
+
+        // Item 3: Joker gibt Item
+        ItemStack jokerGibtItem = new ItemStack(Material.EMERALD);
+        ItemMeta jgiMeta = jokerGibtItem.getItemMeta();
+        jgiMeta.setDisplayName("§6Joker gibt Item");
+        jgiMeta.setLore(Arrays.asList("§7Using Joker gives the item"));
+        jokerGibtItem.setItemMeta(jgiMeta);
+        gui.setItem(6, jokerGibtItem);
+
+        player.openInventory(gui);
+    }
+
+    @EventHandler
+    public void onInventoryClick(InventoryClickEvent event) {
+        if (event.getView().getTitle().equals("Random Item Battle Settings")) {
+            event.setCancelled(true);
+        }
     }
 }
