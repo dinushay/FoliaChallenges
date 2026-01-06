@@ -21,9 +21,8 @@ import org.bukkit.event.entity.EntityTargetLivingEntityEvent;
 import org.bukkit.event.player.PlayerGameModeChangeEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
-import org.bukkit.event.player.PlayerDropItemEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerPickupItemEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
@@ -79,9 +78,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     
     private Map<UUID, Material> assignedItems = new HashMap<>();
     private Map<UUID, Integer> scores = new HashMap<>();
-    
-    private int globalJokerCount = 5;
-    private Map<UUID, Integer> usedJokers = new HashMap<>();
     
     private Map<Player, BossBar> bossBars = new HashMap<>();
     private Map<Player, org.bukkit.entity.ArmorStand> itemDisplays = new HashMap<>();
@@ -292,20 +288,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             player.sendMessage(PREFIX + messages.getString("item-assigned", "Item to find: §e%item%").replace("%item%", random.name()));
             createItemDisplay(player, random);
             updateBossBar(player);
-            giveJokers(player);
             saveData();
-        }
-    }
-
-    private void giveJokers(Player player) {
-        UUID uuid = player.getUniqueId();
-        int remainingJokers = globalJokerCount - usedJokers.getOrDefault(uuid, 0);
-        if (remainingJokers > 0) {
-            ItemStack joker = new ItemStack(Material.BARRIER, remainingJokers);
-            ItemMeta meta = joker.getItemMeta();
-            meta.setDisplayName("Joker");
-            joker.setItemMeta(meta);
-            player.getInventory().addItem(joker);
         }
     }
 
@@ -842,14 +825,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     @EventHandler
     public void onBlockBreak(BlockBreakEvent e) { if (!timerRunning && e.getPlayer().getGameMode() == GameMode.SURVIVAL) e.setCancelled(true); }
     @EventHandler
-    public void onBlockPlace(BlockPlaceEvent e) { 
-        if (!timerRunning && e.getPlayer().getGameMode() == GameMode.SURVIVAL) e.setCancelled(true);
-        // Prevent placing jokers
-        ItemStack item = e.getItemInHand();
-        if (item.hasItemMeta() && "Joker".equals(item.getItemMeta().getDisplayName())) {
-            e.setCancelled(true);
-        }
-    }
+    public void onBlockPlace(BlockPlaceEvent e) { if (!timerRunning && e.getPlayer().getGameMode() == GameMode.SURVIVAL) e.setCancelled(true); }
     @EventHandler
     public void onDmg(EntityDamageEvent e) { if (e.getEntity() instanceof Player && !timerRunning && ((Player)e.getEntity()).getGameMode() == GameMode.SURVIVAL) e.setCancelled(true); }
     @EventHandler
@@ -894,11 +870,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             assignedItems.forEach((uuid, mat) -> assignMap.put(uuid.toString(), mat.name()));
             data.set("assignedItems", assignMap);
             
-            data.set("globalJokerCount", globalJokerCount);
-            Map<String, Integer> usedMap = new HashMap<>();
-            usedJokers.forEach((uuid, count) -> usedMap.put(uuid.toString(), count));
-            data.set("usedJokers", usedMap);
-            
             data.save(dataFile);
         } catch (IOException ex) {
             getLogger().severe(messages.getString("save-data-error", "Could not save data.yml"));
@@ -927,12 +898,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                 try { assignedItems.put(UUID.fromString(k), Material.valueOf((String)v)); } catch(Exception e){}
             });
         }
-        globalJokerCount = data.getInt("globalJokerCount", 5);
-        if (data.contains("usedJokers")) {
-            data.getConfigurationSection("usedJokers").getValues(false).forEach((k, v) -> {
-                try { usedJokers.put(UUID.fromString(k), (Integer)v); } catch(Exception e){}
-            });
-        }
     }
 
     private void sendHelp(CommandSender sender) {
@@ -940,18 +905,19 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     }
 
     private void openSettingsGUI(Player player) {
-        Inventory gui = Bukkit.createInventory(null, 27, settingsGUITitle);
+        Inventory gui = Bukkit.createInventory(null, 9, settingsGUITitle);
 
-        // Joker Items: Slots 0 to globalJokerCount-1
-        for (int i = 0; i < globalJokerCount; i++) {
-            ItemStack joker = new ItemStack(Material.BARRIER);
-            ItemMeta meta = joker.getItemMeta();
-            meta.setDisplayName("Joker");
-            joker.setItemMeta(meta);
-            gui.setItem(i, joker);
-        }
+        // Item 1: Joker
+        String jokerName = messages.getString("settings-joker-name", "§6Amount of jokers");
+        String jokerLore = messages.getString("settings-joker-lore", "§7The §6amount§7 of §6jokers§7 a player can use");
+        ItemStack joker = new ItemStack(Material.BARRIER);
+        ItemMeta jokerMeta = joker.getItemMeta();
+        jokerMeta.setDisplayName(jokerName);
+        jokerMeta.setLore(Arrays.asList(jokerLore));
+        joker.setItemMeta(jokerMeta);
+        gui.setItem(2, joker);
 
-        // Duplicate Targets at slot 10
+        // Item 2: Doppelte Ziele
         String duplicateName = messages.getString("settings-duplicate-name", "§cDuplicate Targets");
         String duplicateLore = messages.getString("settings-duplicate-lore", "§7Targets can occour §cmultiple times§7 in a session");
         ItemStack duplicate = new ItemStack(Material.PAPER);
@@ -959,9 +925,9 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         duplicateMeta.setDisplayName(duplicateName);
         duplicateMeta.setLore(Arrays.asList(duplicateLore));
         duplicate.setItemMeta(duplicateMeta);
-        gui.setItem(10, duplicate);
+        gui.setItem(4, duplicate);
 
-        // Joker Gives Item at slot 13
+        // Item 3: Joker gibt Item
         String jokerGivesName = messages.getString("settings-joker-gives-item-name", "§bGive item on joker");
         String jokerGivesLore = messages.getString("settings-joker-gives-item-lore", "§7If a player uses a §bjoker§7, they also §breceive§7 the item");
         ItemStack jokerGives = new ItemStack(Material.CHEST);
@@ -969,68 +935,14 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         jokerGivesMeta.setDisplayName(jokerGivesName);
         jokerGivesMeta.setLore(Arrays.asList(jokerGivesLore));
         jokerGives.setItemMeta(jokerGivesMeta);
-        gui.setItem(13, jokerGives);
+        gui.setItem(6, jokerGives);
 
         player.openInventory(gui);
     }
 
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
-        Player player = (Player) event.getWhoClicked();
-        ItemStack clicked = event.getCurrentItem();
         if (event.getView().getTitle().equals(settingsGUITitle)) {
-            event.setCancelled(true);
-            if (clicked != null && clicked.getType() == Material.BARRIER) {
-                // Joker item clicked
-                if (event.getClick() == org.bukkit.event.inventory.ClickType.LEFT) {
-                    // Increase
-                    globalJokerCount++;
-                    saveData();
-                    player.closeInventory();
-                    openSettingsGUI(player);
-                } else if (event.getClick() == org.bukkit.event.inventory.ClickType.RIGHT) {
-                    // Decrease
-                    if (globalJokerCount > 0 && canDecreaseJokerCount()) {
-                        globalJokerCount--;
-                        saveData();
-                        player.closeInventory();
-                        openSettingsGUI(player);
-                    }
-                }
-            }
-        } else if (event.getClick() == org.bukkit.event.inventory.ClickType.RIGHT && clicked != null && clicked.hasItemMeta() && "Joker".equals(clicked.getItemMeta().getDisplayName())) {
-            // Using joker in inventory
-            if (timerRunning) {
-                UUID uuid = player.getUniqueId();
-                int used = usedJokers.getOrDefault(uuid, 0);
-                if (used < globalJokerCount) {
-                    usedJokers.put(uuid, used + 1);
-                    // Remove joker from inventory
-                    clicked.setAmount(clicked.getAmount() - 1);
-                    // Skip current item
-                    assignedItems.remove(uuid);
-                    assignRandomItem(player);
-                    saveData();
-                }
-            }
-        }
-    }
-
-    private boolean canDecreaseJokerCount() {
-        for (Player p : Bukkit.getOnlinePlayers()) {
-            UUID uuid = p.getUniqueId();
-            int used = usedJokers.getOrDefault(uuid, 0);
-            if (used < globalJokerCount) {
-                return false; // Someone still has jokers left
-            }
-        }
-        return true;
-    }
-
-    @EventHandler
-    public void onPlayerDropItem(PlayerDropItemEvent event) {
-        ItemStack item = event.getItemDrop().getItemStack();
-        if (item.hasItemMeta() && "Joker".equals(item.getItemMeta().getDisplayName())) {
             event.setCancelled(true);
         }
     }
