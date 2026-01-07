@@ -14,6 +14,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
@@ -22,6 +23,7 @@ import org.bukkit.event.player.PlayerGameModeChangeEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerPickupItemEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -1013,18 +1015,25 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     @EventHandler
     public void onInventoryClickForJoker(InventoryClickEvent event) {
         if (event.getCurrentItem() != null && event.getCurrentItem().getType() == Material.BARRIER) {
-            Player player = (Player) event.getWhoClicked();
-            if (event.isRightClick() && timerRunning && assignedItems.containsKey(player.getUniqueId())) {
-                // Use joker to skip item
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onPlayerInteract(PlayerInteractEvent event) {
+        Player player = event.getPlayer();
+        ItemStack item = event.getItem();
+        if (item != null && item.getType() == Material.BARRIER && (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK)) {
+            if (timerRunning && assignedItems.containsKey(player.getUniqueId())) {
                 int current = jokerCounts.getOrDefault(player.getUniqueId(), 0);
                 if (current > 0) {
                     jokerCounts.put(player.getUniqueId(), current - 1);
                     updatePlayerJokers(player);
                     assignRandomItem(player);
                     player.sendMessage(PREFIX + messages.getString("joker-used", "§aJoker used! Skipped to a new item."));
+                    event.setCancelled(true);
                 }
             }
-            event.setCancelled(true);
         }
     }
 }
