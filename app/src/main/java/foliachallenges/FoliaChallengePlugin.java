@@ -934,11 +934,12 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         // Item 1: Joker
         String jokerName = messages.getString("settings-joker-name", "§6Amount of jokers");
         int currentJokers = jokerCounts.getOrDefault(player.getUniqueId(), 0);
-        String jokerLore = messages.getString("settings-joker-lore", "§7The §6amount§7 of §6jokers§7 a player can use") + "\n§eCurrent: " + currentJokers;
+        String jokerLore = messages.getString("settings-joker-lore", "§7The §6amount§7 of §6jokers§7 a player can use");
+        String currentText = messages.getString("settings-joker-current", "§eCurrent: %count%").replace("%count%", String.valueOf(currentJokers));
         ItemStack joker = new ItemStack(Material.BARRIER);
         ItemMeta jokerMeta = joker.getItemMeta();
         jokerMeta.setDisplayName(jokerName);
-        jokerMeta.setLore(Arrays.asList(jokerLore.split("\n")));
+        jokerMeta.setLore(Arrays.asList(jokerLore, currentText));
         joker.setItemMeta(jokerMeta);
         gui.setItem(2, joker);
 
