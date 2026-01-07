@@ -90,3 +90,4 @@ settings-joker-gives-item-lore: "§7If a player uses a §bjoker§7, they also §
 joker-item-name: "§6Joker"
 joker-item-lore: "§7This is a joker. Right-click to skip the current item."
 joker-used: "§aJoker used! Skipped to a new item."
+joker-timer-not-running: "§cYou can only use jokers when the challenge is running!"

@@ -90,3 +90,4 @@ settings-joker-gives-item-lore: "§7Wenn ein Spieler einen §bJoker§7 verwendet
 joker-item-name: "§6Joker"
 joker-item-lore: "§7Das ist ein Joker. Rechtsklicken um das aktuelle Item zu überspringen."
 joker-used: "§aJoker verwendet! Zu einem neuen Item gesprungen."
+joker-timer-not-running: "§cDu kannst Joker nur verwenden, wenn die Challenge läuft!"

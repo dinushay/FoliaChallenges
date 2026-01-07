@@ -3,6 +3,7 @@ package foliachallenges;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
+import org.bukkit.Sound;
 import org.bukkit.boss.BarColor;
 import org.bukkit.boss.BarStyle;
 import org.bukkit.boss.BossBar;
@@ -1031,8 +1032,11 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                     updatePlayerJokers(player);
                     assignRandomItem(player);
                     player.sendMessage(PREFIX + messages.getString("joker-used", "§aJoker used! Skipped to a new item."));
+                    player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
                     event.setCancelled(true);
                 }
+            } else if (!timerRunning) {
+                player.sendMessage(PREFIX + messages.getString("joker-timer-not-running", "§cYou can only use jokers when the challenge is running!"));
             }
         }
     }
