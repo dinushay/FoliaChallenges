@@ -1013,6 +1013,17 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     @EventHandler
     public void onInventoryClickForJoker(InventoryClickEvent event) {
         if (event.getCurrentItem() != null && event.getCurrentItem().getType() == Material.BARRIER) {
+            Player player = (Player) event.getWhoClicked();
+            if (event.isRightClick() && timerRunning && assignedItems.containsKey(player.getUniqueId())) {
+                // Use joker to skip item
+                int current = jokerCounts.getOrDefault(player.getUniqueId(), 0);
+                if (current > 0) {
+                    jokerCounts.put(player.getUniqueId(), current - 1);
+                    updatePlayerJokers(player);
+                    assignRandomItem(player);
+                    player.sendMessage(PREFIX + messages.getString("joker-used", "§aJoker used! Skipped to a new item."));
+                }
+            }
             event.setCancelled(true);
         }
     }

@@ -88,4 +88,5 @@ settings-duplicate-lore: "§7Ziele können §cmehrfach§7 in einer Session vorko
 settings-joker-gives-item-name: "§bItem bei Joker geben"
 settings-joker-gives-item-lore: "§7Wenn ein Spieler einen §bJoker§7 verwendet, erhält er auch §bdas Item§7"
 joker-item-name: "§6Joker"
-joker-item-lore: "§7Das ist ein Joker. Du kannst ihn nicht verwenden oder wegwerfen."
+joker-item-lore: "§7Das ist ein Joker. Rechtsklicken um das aktuelle Item zu überspringen."
+joker-used: "§aJoker verwendet! Zu einem neuen Item gesprungen."
