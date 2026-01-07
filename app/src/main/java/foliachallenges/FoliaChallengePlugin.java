@@ -93,7 +93,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         messages = YamlConfiguration.loadConfiguration(new File(getDataFolder(), "messages.yml"));
         settingsGUITitle = messages.getString("settings-gui-color", "§b§l") + messages.getString("settings-gui-title", "Random Item Battle Settings");
         loadConfigurableBlacklist();
-        loadJokerCounts();
         getServer().getPluginManager().registerEvents(this, this);
         
         // --- CLEANUP LOGIC START ---
@@ -260,7 +259,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         if (saveTask != null) saveTask.cancel();
         
         saveData();
-        saveJokerCounts();
         getLogger().info(messages.getString("plugin-disabled", "FoliaChallenge disabled!"));
     }
 
@@ -384,22 +382,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                 }
             }
         }
-    }
-
-    private void loadJokerCounts() {
-        if (config.contains("joker-counts")) {
-            Map<String, Object> map = config.getConfigurationSection("joker-counts").getValues(false);
-            for (Map.Entry<String, Object> entry : map.entrySet()) {
-                jokerCounts.put(UUID.fromString(entry.getKey()), (Integer) entry.getValue());
-            }
-        }
-    }
-
-    private void saveJokerCounts() {
-        for (Map.Entry<UUID, Integer> entry : jokerCounts.entrySet()) {
-            config.set("joker-counts." + entry.getKey().toString(), entry.getValue());
-        }
-        saveConfig();
     }
 
     // --- Commands ---
@@ -894,6 +876,10 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             assignedItems.forEach((uuid, mat) -> assignMap.put(uuid.toString(), mat.name()));
             data.set("assignedItems", assignMap);
             
+            Map<String, Integer> jokerMap = new HashMap<>();
+            jokerCounts.forEach((uuid, count) -> jokerMap.put(uuid.toString(), count));
+            data.set("jokerCounts", jokerMap);
+            
             data.save(dataFile);
         } catch (IOException ex) {
             getLogger().severe(messages.getString("save-data-error", "Could not save data.yml"));
@@ -920,6 +906,11 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         if (data.contains("assignedItems")) {
             data.getConfigurationSection("assignedItems").getValues(false).forEach((k, v) -> {
                 try { assignedItems.put(UUID.fromString(k), Material.valueOf((String)v)); } catch(Exception e){}
+            });
+        }
+        if (data.contains("jokerCounts")) {
+            data.getConfigurationSection("jokerCounts").getValues(false).forEach((k, v) -> {
+                try { jokerCounts.put(UUID.fromString(k), (Integer)v); } catch(Exception e){}
             });
         }
     }
@@ -979,8 +970,10 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         if (count > 0) {
             ItemStack barrier = new ItemStack(Material.BARRIER, count);
             ItemMeta meta = barrier.getItemMeta();
-            meta.setDisplayName("§6Joker");
-            meta.setLore(Arrays.asList("§7This is a joker. You cannot use or drop it."));
+            String jokerItemName = messages.getString("joker-item-name", "§6Joker");
+            String jokerItemLore = messages.getString("joker-item-lore", "§7This is a joker. You cannot use or drop it.");
+            meta.setDisplayName(jokerItemName);
+            meta.setLore(Arrays.asList(jokerItemLore));
             barrier.setItemMeta(meta);
             player.getInventory().addItem(barrier);
         }
