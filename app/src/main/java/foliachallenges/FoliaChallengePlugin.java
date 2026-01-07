@@ -21,6 +21,7 @@ import org.bukkit.event.entity.EntityTargetLivingEntityEvent;
 import org.bukkit.event.player.PlayerGameModeChangeEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerPickupItemEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -78,6 +79,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     
     private Map<UUID, Material> assignedItems = new HashMap<>();
     private Map<UUID, Integer> scores = new HashMap<>();
+    private Map<UUID, Integer> jokerCounts = new HashMap<>();
     
     private Map<Player, BossBar> bossBars = new HashMap<>();
     private Map<Player, org.bukkit.entity.ArmorStand> itemDisplays = new HashMap<>();
@@ -91,6 +93,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         messages = YamlConfiguration.loadConfiguration(new File(getDataFolder(), "messages.yml"));
         settingsGUITitle = messages.getString("settings-gui-color", "§b§l") + messages.getString("settings-gui-title", "Random Item Battle Settings");
         loadConfigurableBlacklist();
+        loadJokerCounts();
         getServer().getPluginManager().registerEvents(this, this);
         
         // --- CLEANUP LOGIC START ---
@@ -257,6 +260,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         if (saveTask != null) saveTask.cancel();
         
         saveData();
+        saveJokerCounts();
         getLogger().info(messages.getString("plugin-disabled", "FoliaChallenge disabled!"));
     }
 
@@ -380,6 +384,22 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                 }
             }
         }
+    }
+
+    private void loadJokerCounts() {
+        if (config.contains("joker-counts")) {
+            Map<String, Object> map = config.getConfigurationSection("joker-counts").getValues(false);
+            for (Map.Entry<String, Object> entry : map.entrySet()) {
+                jokerCounts.put(UUID.fromString(entry.getKey()), (Integer) entry.getValue());
+            }
+        }
+    }
+
+    private void saveJokerCounts() {
+        for (Map.Entry<UUID, Integer> entry : jokerCounts.entrySet()) {
+            config.set("joker-counts." + entry.getKey().toString(), entry.getValue());
+        }
+        saveConfig();
     }
 
     // --- Commands ---
@@ -783,6 +803,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         if (player.getGameMode() == GameMode.SURVIVAL) {
             updateBossBar(player);
         }
+        updatePlayerJokers(player);
     }
 
     @EventHandler
@@ -825,7 +846,10 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     @EventHandler
     public void onBlockBreak(BlockBreakEvent e) { if (!timerRunning && e.getPlayer().getGameMode() == GameMode.SURVIVAL) e.setCancelled(true); }
     @EventHandler
-    public void onBlockPlace(BlockPlaceEvent e) { if (!timerRunning && e.getPlayer().getGameMode() == GameMode.SURVIVAL) e.setCancelled(true); }
+    public void onBlockPlace(BlockPlaceEvent e) { 
+        if (e.getItemInHand().getType() == Material.BARRIER || (!timerRunning && e.getPlayer().getGameMode() == GameMode.SURVIVAL)) 
+            e.setCancelled(true); 
+    }
     @EventHandler
     public void onDmg(EntityDamageEvent e) { if (e.getEntity() instanceof Player && !timerRunning && ((Player)e.getEntity()).getGameMode() == GameMode.SURVIVAL) e.setCancelled(true); }
     @EventHandler
@@ -909,11 +933,12 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
 
         // Item 1: Joker
         String jokerName = messages.getString("settings-joker-name", "§6Amount of jokers");
-        String jokerLore = messages.getString("settings-joker-lore", "§7The §6amount§7 of §6jokers§7 a player can use");
+        int currentJokers = jokerCounts.getOrDefault(player.getUniqueId(), 0);
+        String jokerLore = messages.getString("settings-joker-lore", "§7The §6amount§7 of §6jokers§7 a player can use") + "\n§eCurrent: " + currentJokers;
         ItemStack joker = new ItemStack(Material.BARRIER);
         ItemMeta jokerMeta = joker.getItemMeta();
         jokerMeta.setDisplayName(jokerName);
-        jokerMeta.setLore(Arrays.asList(jokerLore));
+        jokerMeta.setLore(Arrays.asList(jokerLore.split("\n")));
         joker.setItemMeta(jokerMeta);
         gui.setItem(2, joker);
 
@@ -940,9 +965,60 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         player.openInventory(gui);
     }
 
+    private void updatePlayerJokers(Player player) {
+        UUID uuid = player.getUniqueId();
+        int count = jokerCounts.getOrDefault(uuid, 0);
+        // Entferne alle Barrier aus Inventar
+        for (ItemStack item : player.getInventory().getContents()) {
+            if (item != null && item.getType() == Material.BARRIER) {
+                player.getInventory().removeItem(item);
+            }
+        }
+        // Füge count Barrier hinzu
+        if (count > 0) {
+            ItemStack barrier = new ItemStack(Material.BARRIER, count);
+            ItemMeta meta = barrier.getItemMeta();
+            meta.setDisplayName("§6Joker");
+            meta.setLore(Arrays.asList("§7This is a joker. You cannot use or drop it."));
+            barrier.setItemMeta(meta);
+            player.getInventory().addItem(barrier);
+        }
+    }
+
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         if (event.getView().getTitle().equals(settingsGUITitle)) {
+            event.setCancelled(true);
+            if (event.getWhoClicked() instanceof Player) {
+                Player player = (Player) event.getWhoClicked();
+                if (event.getSlot() == 2) { // Joker slot
+                    int current = jokerCounts.getOrDefault(player.getUniqueId(), 0);
+                    if (event.isLeftClick()) {
+                        jokerCounts.put(player.getUniqueId(), current + 1);
+                        updatePlayerJokers(player);
+                    } else if (event.isRightClick()) {
+                        if (current > 0) {
+                            jokerCounts.put(player.getUniqueId(), current - 1);
+                            updatePlayerJokers(player);
+                        }
+                    }
+                    player.closeInventory();
+                    openSettingsGUI(player);
+                }
+            }
+        }
+    }
+
+    @EventHandler
+    public void onPlayerDropItem(PlayerDropItemEvent event) {
+        if (event.getItemDrop().getItemStack().getType() == Material.BARRIER) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onInventoryClickForJoker(InventoryClickEvent event) {
+        if (event.getCurrentItem() != null && event.getCurrentItem().getType() == Material.BARRIER) {
             event.setCancelled(true);
         }
     }
