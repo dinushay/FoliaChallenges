@@ -83,6 +83,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     private Map<UUID, Material> assignedItems = new HashMap<>();
     private Map<UUID, Integer> scores = new HashMap<>();
     private Map<UUID, Integer> jokerCounts = new HashMap<>();
+    private int defaultJokers = 0;
     
     private Map<Player, BossBar> bossBars = new HashMap<>();
     private Map<Player, org.bukkit.entity.ArmorStand> itemDisplays = new HashMap<>();
@@ -93,6 +94,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         saveDefaultMessages();
         saveDefaultItemBlacklist();
         config = getConfig();
+        defaultJokers = config.getInt("default-jokers", 0);
         messages = YamlConfiguration.loadConfiguration(new File(getDataFolder(), "messages.yml"));
         settingsGUITitle = messages.getString("settings-gui-color", "§b§l") + messages.getString("settings-gui-title", "Random Item Battle Settings");
         loadConfigurableBlacklist();
@@ -788,6 +790,9 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         if (player.getGameMode() == GameMode.SURVIVAL) {
             updateBossBar(player);
         }
+        if (!jokerCounts.containsKey(player.getUniqueId())) {
+            jokerCounts.put(player.getUniqueId(), defaultJokers);
+        }
         updatePlayerJokers(player);
     }
 
@@ -883,6 +888,8 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             jokerCounts.forEach((uuid, count) -> jokerMap.put(uuid.toString(), count));
             data.set("jokerCounts", jokerMap);
             
+            data.set("defaultJokers", defaultJokers);
+            
             data.save(dataFile);
         } catch (IOException ex) {
             getLogger().severe(messages.getString("save-data-error", "Could not save data.yml"));
@@ -916,6 +923,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                 try { jokerCounts.put(UUID.fromString(k), (Integer)v); } catch(Exception e){}
             });
         }
+        defaultJokers = data.getInt("defaultJokers", defaultJokers);
     }
 
     private void sendHelp(CommandSender sender) {
@@ -927,9 +935,9 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
 
         // Item 1: Joker
         String jokerName = messages.getString("settings-joker-name", "§6Amount of jokers");
-        int currentJokers = jokerCounts.getOrDefault(player.getUniqueId(), 0);
-        String jokerLore = messages.getString("settings-joker-lore", "§7The §6amount§7 of §6jokers§7 a player can use");
-        String currentText = messages.getString("settings-joker-current", "§eCurrent: %count%").replace("%count%", String.valueOf(currentJokers));
+        int currentJokers = defaultJokers;
+        String jokerLore = messages.getString("settings-joker-lore", "§7The §6global amount§7 of §6jokers§7 players can use");
+        String currentText = messages.getString("settings-joker-current", "§eGlobal: %count%").replace("%count%", String.valueOf(currentJokers));
         ItemStack joker = new ItemStack(Material.BARRIER);
         ItemMeta jokerMeta = joker.getItemMeta();
         jokerMeta.setDisplayName(jokerName);
@@ -989,14 +997,24 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             if (event.getWhoClicked() instanceof Player) {
                 Player player = (Player) event.getWhoClicked();
                 if (event.getSlot() == 2) { // Joker slot
-                    int current = jokerCounts.getOrDefault(player.getUniqueId(), 0);
                     if (event.isLeftClick()) {
-                        jokerCounts.put(player.getUniqueId(), current + 1);
-                        updatePlayerJokers(player);
+                        defaultJokers++;
+                        config.set("default-jokers", defaultJokers);
+                        saveConfig();
+                        for (Player p : Bukkit.getOnlinePlayers()) {
+                            jokerCounts.put(p.getUniqueId(), defaultJokers);
+                            updatePlayerJokers(p);
+                        }
                     } else if (event.isRightClick()) {
-                        if (current > 0) {
-                            jokerCounts.put(player.getUniqueId(), current - 1);
-                            updatePlayerJokers(player);
+                        boolean anyZero = jokerCounts.values().stream().anyMatch(count -> count == 0);
+                        if (!anyZero && defaultJokers > 0) {
+                            defaultJokers--;
+                            config.set("default-jokers", defaultJokers);
+                            saveConfig();
+                            for (Player p : Bukkit.getOnlinePlayers()) {
+                                jokerCounts.put(p.getUniqueId(), defaultJokers);
+                                updatePlayerJokers(p);
+                            }
                         }
                     }
                     player.closeInventory();

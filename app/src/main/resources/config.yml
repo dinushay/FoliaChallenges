@@ -3,3 +3,5 @@
 allow-movement-without-timer: false
 # Whether to share blacklisted items to the Developer
 share-blacklisted-items-to-developer: true
+# Default number of jokers given to each player
+default-jokers: 0
