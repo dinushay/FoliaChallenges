@@ -39,6 +39,8 @@ reset-error-properties: "§cError editing server.properties: %error%"
 reset-warning-1: "§4§lWARNING: §cPlease confirm the reset command!"
 reset-warning-2: "§cThis command clears all §lChallenge Data §r§cand §lgenerates a new world§c!"
 reset-confirm-usage: "§7Use §c/reset confirm§7 to continue."
+reset-initiated: "§aReset initiated. World will be switched and seed renewed..."
+reset-data-cleared: "§cChallenge data has been reset!"
 reset-kick-message: |
   §8————————————————————
 
@@ -60,11 +62,13 @@ help-message: |
   §e/timer stop §7- Stops the challenge timer
   §e/timer set <Minutes> §7- Sets the timer duration
   §e/start §7- Starts the challenge timer
+  §e/challenges randomitembattle settings §7- Opens settings GUI for Random Item Battle
   §e/challenges randomitembattle listitems §7- Lists assigned items
   §e/challenges randomitembattle listpoints §7- Shows player points
   §e/challenges randomitembattle blockitem <Item> §7- Blocks an item (Blacklist) and skips it
   §e/challenges reload §7- Reloads configuration and messages
   §e/reset confirm §7- Resets the world (Warning!)
+  §e/settings §7- Opens settings GUI
   §6§l========================
 #color codes
 color-title: "§6§l"
