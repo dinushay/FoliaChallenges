@@ -1013,8 +1013,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                         int oldDefault = defaultJokers;
                         defaultJokers++;
                         int difference = defaultJokers - oldDefault;
-                        config.set("default-jokers", defaultJokers);
-                        saveConfig();
                         for (Player p : Bukkit.getOnlinePlayers()) {
                             int currentCount = jokerCounts.getOrDefault(p.getUniqueId(), 0);
                             jokerCounts.put(p.getUniqueId(), currentCount + difference);
@@ -1026,8 +1024,6 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                         boolean canReduce = jokerCounts.values().stream().allMatch(count -> count >= difference);
                         if (canReduce && defaultJokers > 0) {
                             defaultJokers--;
-                            config.set("default-jokers", defaultJokers);
-                            saveConfig();
                             for (Player p : Bukkit.getOnlinePlayers()) {
                                 int currentCount = jokerCounts.getOrDefault(p.getUniqueId(), 0);
                                 jokerCounts.put(p.getUniqueId(), currentCount - difference);
