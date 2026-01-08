@@ -19,7 +19,7 @@ dependencies {
     implementation(libs.guava)
 
     // Paper API for Minecraft plugin development
-    implementation("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
+    compileOnly("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
 }
 
 // Apply a specific Java toolchain to ease working on different environments.
