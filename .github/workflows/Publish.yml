@@ -1,8 +1,11 @@
-name: Build and Publish to Modrinth
+name: Build and Publish to Modrinth & GitHub
 
 on:
   push:
     branches: [ main ]
+
+permissions:
+  contents: write
 
 jobs:
   publish:
@@ -63,11 +66,21 @@ jobs:
         token: ${{ secrets.MODRINTH_TOKEN }}
         project: 'QSSFb4tn'
         name: ${{ env.COMMIT_TITLE }}
-        
         version: ${{ env.PROJECT_VERSION }}.${{ env.UNIX_TIME }}
-        
         channel: 'alpha'
         changelog: ${{ env.COMMIT_BODY }}
         loaders: '["folia"]'
         game-versions: '["1.21.8", "1.21.9", "1.21.10", "1.21.11"]'
         files: '["app/build/libs/FoliaChallenges.jar"]'
+
+    - name: GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: v${{ env.PROJECT_VERSION }}.${{ env.UNIX_TIME }}
+        name: ${{ env.COMMIT_TITLE }}
+        body: ${{ env.COMMIT_BODY }}
+        files: app/build/libs/FoliaChallenges.jar
+        prerelease: true
+        make_latest: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
