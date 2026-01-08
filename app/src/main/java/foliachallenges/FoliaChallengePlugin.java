@@ -1087,7 +1087,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                         Material assignedItem = assignedItems.get(player.getUniqueId());
                         if (assignedItem != null) {
                             player.getInventory().addItem(new ItemStack(assignedItem));
-                            player.sendMessage(PREFIX + messages.getString("joker-item-received", "§aYou received the item: §e%item%").replace("%item%", assignedItem.name()));
+                            player.sendMessage(PREFIX + messages.getString("item-received", "§aYou received the item: §e%item%").replace("%item%", assignedItem.name()));
                         }
                     }
                     assignRandomItem(player);
