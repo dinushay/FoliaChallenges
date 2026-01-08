@@ -115,6 +115,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         registerCommand("timer");
         registerCommand("reset");
         registerCommand("start");
+        registerCommand("settings");
         
         getLogger().info(messages.getString("plugin-enabled", "FoliaChallenge enabled!"));
         
@@ -495,6 +496,20 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             }
             return true;
         }
+
+        if (cmdName.equals("settings")) {
+            if (!sender.isOp() && !sender.hasPermission("foliachallenges.admin")) {
+                sender.sendMessage(PREFIX + messages.getString("no-permission", "§cYou do not have permission for this command!"));
+                return true;
+            }
+            if (!(sender instanceof Player)) {
+                sender.sendMessage(PREFIX + "Only players can open the settings GUI!");
+                return true;
+            }
+            openSettingsGUI((Player) sender);
+            return true;
+        }
+
         return false;
     }
 

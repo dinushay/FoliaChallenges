@@ -16,3 +16,6 @@ commands:
   reset:
     description: Reset the world
     usage: /<command> <confirm>
+  settings:
+    description: Open the settings GUI
+    usage: /<command>
