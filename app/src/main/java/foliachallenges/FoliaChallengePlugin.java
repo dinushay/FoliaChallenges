@@ -998,21 +998,27 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                 Player player = (Player) event.getWhoClicked();
                 if (event.getSlot() == 2) { // Joker slot
                     if (event.isLeftClick()) {
+                        int oldDefault = defaultJokers;
                         defaultJokers++;
+                        int difference = defaultJokers - oldDefault;
                         config.set("default-jokers", defaultJokers);
                         saveConfig();
                         for (Player p : Bukkit.getOnlinePlayers()) {
-                            jokerCounts.put(p.getUniqueId(), defaultJokers);
+                            int currentCount = jokerCounts.getOrDefault(p.getUniqueId(), 0);
+                            jokerCounts.put(p.getUniqueId(), currentCount + difference);
                             updatePlayerJokers(p);
                         }
                     } else if (event.isRightClick()) {
-                        boolean anyZero = jokerCounts.values().stream().anyMatch(count -> count == 0);
-                        if (!anyZero && defaultJokers > 0) {
+                        int oldDefault = defaultJokers;
+                        int difference = oldDefault - (oldDefault - 1);
+                        boolean canReduce = jokerCounts.values().stream().allMatch(count -> count >= difference);
+                        if (canReduce && defaultJokers > 0) {
                             defaultJokers--;
                             config.set("default-jokers", defaultJokers);
                             saveConfig();
                             for (Player p : Bukkit.getOnlinePlayers()) {
-                                jokerCounts.put(p.getUniqueId(), defaultJokers);
+                                int currentCount = jokerCounts.getOrDefault(p.getUniqueId(), 0);
+                                jokerCounts.put(p.getUniqueId(), currentCount - difference);
                                 updatePlayerJokers(p);
                             }
                         }
