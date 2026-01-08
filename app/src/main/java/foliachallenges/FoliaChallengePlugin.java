@@ -1048,8 +1048,8 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                 if (current > 0) {
                     jokerCounts.put(player.getUniqueId(), current - 1);
                     updatePlayerJokers(player);
-                    assignRandomItem(player);
                     player.sendMessage(PREFIX + messages.getString("joker-used", "§aJoker used! Skipped to a new item."));
+                    assignRandomItem(player);
                     player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
                     event.setCancelled(true);
                 }
