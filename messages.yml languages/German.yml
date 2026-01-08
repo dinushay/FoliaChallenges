@@ -62,11 +62,13 @@ help-message: |
   §e/timer stop §7- Stoppt den Challenge-Timer
   §e/timer set <Minuten> §7- Setzt die Dauer des Timers
   §e/start §7- Startet den Challenge-Timer
+  §e/challenges randomitembattle settings §7- Öffnet das Einstellungs-GUI für Random Item Battle
   §e/challenges randomitembattle listitems §7- Listet zugewiesene Items auf
   §e/challenges randomitembattle listpoints §7- Zeigt die Spielerpunkte an
   §e/challenges randomitembattle blockitem <Item> §7- Sperrt ein Item (Blacklist) und skippt diese
   §e/challenges reload §7- Lädt Konfiguration und Nachrichten neu
   §e/reset confirm §7- Setzt die Welt zurück (Vorsicht!)
+  §e/settings §7- Öffnet das Einstellungs-GUI
   §6§l========================
 #color codes
 color-title: "§6§l"
