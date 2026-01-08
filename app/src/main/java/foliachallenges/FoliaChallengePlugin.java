@@ -83,6 +83,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     private Map<UUID, Material> assignedItems = new HashMap<>();
     private Map<UUID, Integer> scores = new HashMap<>();
     private Map<UUID, Integer> jokerCounts = new HashMap<>();
+    private Map<UUID, Integer> storedJokers = new HashMap<>();
     private int defaultJokers = 0;
     
     private Map<Player, BossBar> bossBars = new HashMap<>();
@@ -847,6 +848,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     @EventHandler
     public void onGMChange(PlayerGameModeChangeEvent e) {
         Player player = e.getPlayer();
+        UUID uuid = player.getUniqueId();
         if (e.getNewGameMode() == GameMode.SURVIVAL) {
             BossBar bar = bossBars.get(player);
             if (bar == null) {
@@ -855,17 +857,27 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                 bar.addPlayer(player);
             }
             if (timerRunning) {
-                if (assignedItems.containsKey(player.getUniqueId())) {
-                    createItemDisplay(player, assignedItems.get(player.getUniqueId()));
+                if (assignedItems.containsKey(uuid)) {
+                    createItemDisplay(player, assignedItems.get(uuid));
                 } else {
                     assignRandomItem(player);
                 }
+            }
+            // Restore stored jokers
+            if (storedJokers.containsKey(uuid)) {
+                jokerCounts.put(uuid, storedJokers.get(uuid));
+                storedJokers.remove(uuid);
+                updatePlayerJokers(player);
             }
             updateBossBar(player);
         } else {
             BossBar bar = bossBars.get(player);
             if (bar != null) bar.removePlayer(player);
             removeItemDisplay(player);
+            // Store jokers before removing
+            storedJokers.put(uuid, jokerCounts.getOrDefault(uuid, 0));
+            jokerCounts.put(uuid, 0);
+            updatePlayerJokers(player);
         }
     }
 
@@ -1021,6 +1033,8 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                                 jokerCounts.put(p.getUniqueId(), currentCount - difference);
                                 updatePlayerJokers(p);
                             }
+                        } else if (defaultJokers > 0) {
+                            player.sendMessage(PREFIX + messages.getString("joker-cannot-reduce", "§cCannot reduce jokers: not all players have enough jokers!"));
                         }
                     }
                     player.closeInventory();
