@@ -290,9 +290,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         List<Material> available = new ArrayList<>();
         for (Material m : Material.values()) {
             if (m.isItem() && ItemBlacklist.isObtainable(m) && !configurableBlacklist.contains(m)) {
-                if (allowDuplicateTargets || !assignedItems.containsValue(m)) {
-                    available.add(m);
-                }
+                available.add(m);
             }
         }
         if (!available.isEmpty()) {

@@ -5,7 +5,7 @@ allow-movement-without-timer: false
 share-blacklisted-items-to-developer: true
 # Default number of jokers given to each player
 default-jokers: 5
-# Whether duplicate targets are allowed (same item can be assigned multiple times)
-allow-duplicate-targets: false
+# Whether duplicate targets are allowed (same item can be assigned multiple times for one player)
+allow-duplicate-targets: true
 # Whether using a joker also gives the player the item
-give-item-on-joker: false
+give-item-on-joker: true
