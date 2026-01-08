@@ -964,7 +964,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         // Item 2: Doppelte Ziele
         String duplicateName = messages.getString("settings-duplicate-name", "§cDuplicate Targets");
         String duplicateLore = messages.getString("settings-duplicate-lore", "§7Targets can occour §cmultiple times§7 in a session");
-        String duplicateStatus = allowDuplicateTargets ? "§aEnabled" : "§cDisabled";
+        String duplicateStatus = allowDuplicateTargets ? messages.getString("settings-enabled", "§aEnabled") : messages.getString("settings-disabled", "§cDisabled");
         ItemStack duplicate = new ItemStack(Material.PAPER);
         ItemMeta duplicateMeta = duplicate.getItemMeta();
         duplicateMeta.setDisplayName(duplicateName);
@@ -975,7 +975,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         // Item 3: Joker gibt Item
         String jokerGivesName = messages.getString("settings-joker-gives-item-name", "§bGive item on joker");
         String jokerGivesLore = messages.getString("settings-joker-gives-item-lore", "§7If a player uses a §bjoker§7, they also §breceive§7 the item");
-        String jokerGivesStatus = giveItemOnJoker ? "§aEnabled" : "§cDisabled";
+        String jokerGivesStatus = giveItemOnJoker ? messages.getString("settings-enabled", "§aEnabled") : messages.getString("settings-disabled", "§cDisabled");
         ItemStack jokerGives = new ItemStack(Material.CHEST);
         ItemMeta jokerGivesMeta = jokerGives.getItemMeta();
         jokerGivesMeta.setDisplayName(jokerGivesName);
