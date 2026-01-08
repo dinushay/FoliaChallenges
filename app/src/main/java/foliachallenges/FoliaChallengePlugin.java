@@ -445,6 +445,10 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                         blockItem(sender, args[2]);
                         return true;
                     } else if (args[1].equalsIgnoreCase("settings")) {
+                        if (!sender.isOp() && !sender.hasPermission("foliachallenges.admin")) {
+                            sender.sendMessage(PREFIX + messages.getString("no-permission", "§cYou do not have permission for this command!"));
+                            return true;
+                        }
                         if (!(sender instanceof Player)) {
                             sender.sendMessage(PREFIX + "Only players can open the settings GUI!");
                             return true;
