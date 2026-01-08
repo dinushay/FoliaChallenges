@@ -23,7 +23,7 @@ no-results: "§7No results to display."
 list-item-entry: "§e%player% §r- §a%item%"
 no-assigned-items: "§7No items assigned yet."
 list-points-entry: "§e%player% §r- §a%points% Points"
-no-points: "§7No points recorded yet."
+no-points: "§7No one got points."
 bossbar-item: "Item to find: §e%item%"
 bossbar-paused: "§cTimer paused"
 bossbar-default: "Current Item: -"
@@ -39,6 +39,8 @@ reset-error-properties: "§cError editing server.properties: %error%"
 reset-warning-1: "§4§lWARNING: §cPlease confirm the reset command!"
 reset-warning-2: "§cThis command clears all §lChallenge Data §r§cand §lgenerates a new world§c!"
 reset-confirm-usage: "§7Use §c/reset confirm§7 to continue."
+reset-initiated: "§aReset initiated. World will be switched and seed renewed..."
+reset-data-cleared: "§cChallenge data has been reset!"
 reset-kick-message: |
   §8————————————————————
 
@@ -60,11 +62,13 @@ help-message: |
   §e/timer stop §7- Stops the challenge timer
   §e/timer set <Minutes> §7- Sets the timer duration
   §e/start §7- Starts the challenge timer
+  §e/challenges randomitembattle settings §7- Opens settings GUI for Random Item Battle
   §e/challenges randomitembattle listitems §7- Lists assigned items
   §e/challenges randomitembattle listpoints §7- Shows player points
   §e/challenges randomitembattle blockitem <Item> §7- Blocks an item (Blacklist) and skips it
   §e/challenges reload §7- Reloads configuration and messages
   §e/reset confirm §7- Resets the world (Warning!)
+  §e/settings §7- Opens settings GUI
   §6§l========================
 #color codes
 color-title: "§6§l"
@@ -76,3 +80,20 @@ color-no-data: "§7"
 color-timer-running: "§a"
 color-timer-paused: "§c"
 color-timer-not-set: "§e"
+settings-gui-title: "Random Item Battle Settings"
+settings-gui-color: "§b§l"
+settings-joker-name: "§6Amount of jokers"
+settings-joker-lore: "§7The §6global amount§7 of §6jokers§7 players can use. §cWon't give points when used."
+settings-joker-current: "§eCurrent: %count%"
+settings-duplicate-name: "§cDuplicate Targets"
+settings-duplicate-lore: "§7Targets can occour §cmultiple times§7 in a session"
+settings-joker-gives-item-name: "§bGive item on joker"
+settings-joker-gives-item-lore: "§7If a player uses a §bjoker§7, they also §breceive§7 the item"
+joker-item-name: "§6Joker"
+joker-item-lore: "§7This is a joker. Right-click to skip the current item."
+joker-used: "§aJoker used! Skipped to a new item."
+joker-timer-not-running: "§cYou can only use jokers when the challenge is running!"
+joker-cannot-reduce: "§cCannot reduce jokers: not all players have enough jokers!"
+item-received: "§aYou received the item: §e%item%"
+settings-enabled: "§aCurrently enabled"
+settings-disabled: "§cCurrently disabled"

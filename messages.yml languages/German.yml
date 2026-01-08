@@ -19,7 +19,7 @@ assigned-items-title: "§6=== Zugewiesene Items ==="
 player-points-title: "§6==== Spieler Punkte ===="
 leaderboard-title: "§6=== Challenge Ergebnisse ==="
 leaderboard-entry: "#%rank% %player% §r- §a%points% Punkte"
-no-results: "§7Keine Ergebnisse anzuzeigen."
+no-results: "§7Niemand hat Punkte bekommen."
 list-item-entry: "§e%player% §r- §a%item%"
 no-assigned-items: "§7Noch keine Items zugewiesen."
 list-points-entry: "§e%player% §r- §a%points% Punkte"
@@ -62,11 +62,13 @@ help-message: |
   §e/timer stop §7- Stoppt den Challenge-Timer
   §e/timer set <Minuten> §7- Setzt die Dauer des Timers
   §e/start §7- Startet den Challenge-Timer
+  §e/challenges randomitembattle settings §7- Öffnet das Einstellungs-GUI für Random Item Battle
   §e/challenges randomitembattle listitems §7- Listet zugewiesene Items auf
   §e/challenges randomitembattle listpoints §7- Zeigt die Spielerpunkte an
   §e/challenges randomitembattle blockitem <Item> §7- Sperrt ein Item (Blacklist) und skippt diese
   §e/challenges reload §7- Lädt Konfiguration und Nachrichten neu
   §e/reset confirm §7- Setzt die Welt zurück (Vorsicht!)
+  §e/settings §7- Öffnet das Einstellungs-GUI
   §6§l========================
 #color codes
 color-title: "§6§l"
@@ -78,3 +80,20 @@ color-no-data: "§7"
 color-timer-running: "§a"
 color-timer-paused: "§c"
 color-timer-not-set: "§e"
+settings-gui-title: "Random Item Battle Einstellungen"
+settings-gui-color: "§b§l"
+settings-joker-name: "§6Anzahl der Joker"
+settings-joker-lore: "§7Die §6globale Anzahl§7 an §6Jokern§7, die Spieler verwenden können. §cGibt keine Punkte, wenn verwendet."
+settings-joker-current: "§eGlobal: %count%"
+settings-duplicate-name: "§cDoppelte Ziele"
+settings-duplicate-lore: "§7Ziele können §cmehrfach§7 in einer Session vorkommen"
+settings-joker-gives-item-name: "§bItem bei Joker geben"
+settings-joker-gives-item-lore: "§7Wenn ein Spieler einen §bJoker§7 verwendet, erhält er auch §bdas Item§7"
+joker-item-name: "§6Joker"
+joker-item-lore: "§7Das ist ein Joker. Rechtsklicken um das aktuelle Item zu überspringen."
+joker-used: "§aJoker verwendet! Zu einem neuen Item gesprungen."
+joker-timer-not-running: "§cDu kannst Joker nur verwenden, wenn die Challenge läuft!"
+joker-cannot-reduce: "§cJoker können nicht weiter reduziert werden: nicht alle Spieler haben genug Joker!"
+item-received: "§aDu hast das Item erhalten: §e%item%"
+settings-enabled: "§aAktuell aktiviert"
+settings-disabled: "§cAktuell deaktiviert"

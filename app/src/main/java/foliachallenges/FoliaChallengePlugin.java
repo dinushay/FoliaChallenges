@@ -3,6 +3,7 @@ package foliachallenges;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
+import org.bukkit.Sound;
 import org.bukkit.boss.BarColor;
 import org.bukkit.boss.BarStyle;
 import org.bukkit.boss.BossBar;
@@ -14,6 +15,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
@@ -21,8 +23,15 @@ import org.bukkit.event.entity.EntityTargetLivingEntityEvent;
 import org.bukkit.event.player.PlayerGameModeChangeEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerPickupItemEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+
 import org.bukkit.plugin.java.JavaPlugin;
 
 import io.papermc.paper.threadedregions.scheduler.GlobalRegionScheduler;
@@ -54,6 +63,8 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
 
     private static final String PREFIX = "§8§l┃ §bFoliaChallenges §8┃§7 ";
 
+    private String settingsGUITitle;
+
     private FileConfiguration config;
     private FileConfiguration messages;
     private long timerSeconds = 0;
@@ -71,6 +82,11 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     
     private Map<UUID, Material> assignedItems = new HashMap<>();
     private Map<UUID, Integer> scores = new HashMap<>();
+    private Map<UUID, Integer> jokerCounts = new HashMap<>();
+    private Map<UUID, Integer> storedJokers = new HashMap<>();
+    private int defaultJokers = 0;
+    private boolean allowDuplicateTargets = false;
+    private boolean giveItemOnJoker = false;
     
     private Map<Player, BossBar> bossBars = new HashMap<>();
     private Map<Player, org.bukkit.entity.ArmorStand> itemDisplays = new HashMap<>();
@@ -81,7 +97,11 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         saveDefaultMessages();
         saveDefaultItemBlacklist();
         config = getConfig();
+        defaultJokers = config.getInt("default-jokers", 0);
+        allowDuplicateTargets = config.getBoolean("allow-duplicate-targets", false);
+        giveItemOnJoker = config.getBoolean("give-item-on-joker", false);
         messages = YamlConfiguration.loadConfiguration(new File(getDataFolder(), "messages.yml"));
+        settingsGUITitle = messages.getString("settings-gui-color", "§b§l") + messages.getString("settings-gui-title", "Random Item Battle Settings");
         loadConfigurableBlacklist();
         getServer().getPluginManager().registerEvents(this, this);
         
@@ -95,6 +115,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         registerCommand("timer");
         registerCommand("reset");
         registerCommand("start");
+        registerCommand("settings");
         
         getLogger().info(messages.getString("plugin-enabled", "FoliaChallenge enabled!"));
         
@@ -423,10 +444,22 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                         }
                         blockItem(sender, args[2]);
                         return true;
+                    } else if (args[1].equalsIgnoreCase("settings")) {
+                        if (!sender.isOp() && !sender.hasPermission("foliachallenges.admin")) {
+                            sender.sendMessage(PREFIX + messages.getString("no-permission", "§cYou do not have permission for this command!"));
+                            return true;
+                        }
+                        if (!(sender instanceof Player)) {
+                            sender.sendMessage(PREFIX + "Only players can open the settings GUI!");
+                            return true;
+                        }
+                        openSettingsGUI((Player) sender);
+                        return true;
                     }
                 } else if (subCmd.equals("reload")) {
                     reloadConfig();
                     messages = YamlConfiguration.loadConfiguration(new File(getDataFolder(), "messages.yml"));
+                    settingsGUITitle = messages.getString("settings-gui-color", "§b§l") + messages.getString("settings-gui-title", "Random Item Battle Settings");
                     sender.sendMessage(PREFIX + "Configuration and messages reloaded!");
                     return true;
                 } else if (subCmd.equals("help")) {
@@ -467,6 +500,20 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             }
             return true;
         }
+
+        if (cmdName.equals("settings")) {
+            if (!sender.isOp() && !sender.hasPermission("foliachallenges.admin")) {
+                sender.sendMessage(PREFIX + messages.getString("no-permission", "§cYou do not have permission for this command!"));
+                return true;
+            }
+            if (!(sender instanceof Player)) {
+                sender.sendMessage(PREFIX + "Only players can open the settings GUI!");
+                return true;
+            }
+            openSettingsGUI((Player) sender);
+            return true;
+        }
+
         return false;
     }
 
@@ -485,7 +532,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
 
         if (cmdName.equals("challenges")) {
             if (args.length == 1) return filter(args[0], Arrays.asList("randomitembattle", "reload", "help"));
-            if (args.length == 2 && args[0].equalsIgnoreCase("randomitembattle")) return filter(args[1], Arrays.asList("listitems", "listpoints", "blockitem"));
+            if (args.length == 2 && args[0].equalsIgnoreCase("randomitembattle")) return filter(args[1], Arrays.asList("listitems", "listpoints", "blockitem", "settings"));
             if (args.length == 3 && args[1].equalsIgnoreCase("blockitem")) {
                 return Arrays.stream(Material.values()).filter(Material::isItem).map(Material::name).map(String::toLowerCase)
                         .filter(n -> n.startsWith(args[2].toLowerCase())).collect(Collectors.toList());
@@ -767,6 +814,10 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         if (player.getGameMode() == GameMode.SURVIVAL) {
             updateBossBar(player);
         }
+        if (!jokerCounts.containsKey(player.getUniqueId())) {
+            jokerCounts.put(player.getUniqueId(), defaultJokers);
+        }
+        updatePlayerJokers(player);
     }
 
     @EventHandler
@@ -809,7 +860,10 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     @EventHandler
     public void onBlockBreak(BlockBreakEvent e) { if (!timerRunning && e.getPlayer().getGameMode() == GameMode.SURVIVAL) e.setCancelled(true); }
     @EventHandler
-    public void onBlockPlace(BlockPlaceEvent e) { if (!timerRunning && e.getPlayer().getGameMode() == GameMode.SURVIVAL) e.setCancelled(true); }
+    public void onBlockPlace(BlockPlaceEvent e) { 
+        if (e.getItemInHand().getType() == Material.BARRIER || (!timerRunning && e.getPlayer().getGameMode() == GameMode.SURVIVAL)) 
+            e.setCancelled(true); 
+    }
     @EventHandler
     public void onDmg(EntityDamageEvent e) { if (e.getEntity() instanceof Player && !timerRunning && ((Player)e.getEntity()).getGameMode() == GameMode.SURVIVAL) e.setCancelled(true); }
     @EventHandler
@@ -817,6 +871,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     @EventHandler
     public void onGMChange(PlayerGameModeChangeEvent e) {
         Player player = e.getPlayer();
+        UUID uuid = player.getUniqueId();
         if (e.getNewGameMode() == GameMode.SURVIVAL) {
             BossBar bar = bossBars.get(player);
             if (bar == null) {
@@ -825,17 +880,27 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                 bar.addPlayer(player);
             }
             if (timerRunning) {
-                if (assignedItems.containsKey(player.getUniqueId())) {
-                    createItemDisplay(player, assignedItems.get(player.getUniqueId()));
+                if (assignedItems.containsKey(uuid)) {
+                    createItemDisplay(player, assignedItems.get(uuid));
                 } else {
                     assignRandomItem(player);
                 }
+            }
+            // Restore stored jokers
+            if (storedJokers.containsKey(uuid)) {
+                jokerCounts.put(uuid, storedJokers.get(uuid));
+                storedJokers.remove(uuid);
+                updatePlayerJokers(player);
             }
             updateBossBar(player);
         } else {
             BossBar bar = bossBars.get(player);
             if (bar != null) bar.removePlayer(player);
             removeItemDisplay(player);
+            // Store jokers before removing
+            storedJokers.put(uuid, jokerCounts.getOrDefault(uuid, 0));
+            jokerCounts.put(uuid, 0);
+            updatePlayerJokers(player);
         }
     }
 
@@ -853,6 +918,12 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
             Map<String, String> assignMap = new HashMap<>();
             assignedItems.forEach((uuid, mat) -> assignMap.put(uuid.toString(), mat.name()));
             data.set("assignedItems", assignMap);
+            
+            Map<String, Integer> jokerMap = new HashMap<>();
+            jokerCounts.forEach((uuid, count) -> jokerMap.put(uuid.toString(), count));
+            data.set("jokerCounts", jokerMap);
+            
+            data.set("defaultJokers", defaultJokers);
             
             data.save(dataFile);
         } catch (IOException ex) {
@@ -882,9 +953,169 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                 try { assignedItems.put(UUID.fromString(k), Material.valueOf((String)v)); } catch(Exception e){}
             });
         }
+        if (data.contains("jokerCounts")) {
+            data.getConfigurationSection("jokerCounts").getValues(false).forEach((k, v) -> {
+                try { jokerCounts.put(UUID.fromString(k), (Integer)v); } catch(Exception e) { getLogger().warning("Failed to load joker count for " + k + ": " + e.getMessage()); }
+            });
+        }
+        defaultJokers = data.getInt("defaultJokers", defaultJokers);
     }
 
     private void sendHelp(CommandSender sender) {
-        sender.sendMessage(PREFIX + messages.getString("help-message", "§6§l=== FoliaChallenges Help ===\n§e/timer start §7- Start the challenge timer\n§e/timer stop §7- Stop the challenge timer\n§e/timer set <minutes> §7- Set the timer duration\n§e/challenges randomitembattle listitems §7- List assigned items\n§e/challenges randomitembattle listpoints §7- List player points\n§e/challenges randomitembattle blockitem <item> §7- Block an item\n§e/challenges reload §7- Reload config and messages\n§e/reset confirm §7- Reset the world (use with caution)\n§6§l========================"));
+        sender.sendMessage(PREFIX + messages.getString("help-message", "§6§l=== FoliaChallenges Help ===\n§e/timer start §7- Start the challenge timer\n§e/timer stop §7- Stop the challenge timer\n§e/timer set <minutes> §7- Set the timer duration\n§e/challenges randomitembattle listitems §7- List assigned items\n§e/challenges randomitembattle listpoints §7- List player points\n§e/challenges randomitembattle blockitem <item> §7- Block an item\n§e/challenges randomitembattle settings §7- Open settings GUI\n§e/challenges reload §7- Reload config and messages\n§e/reset confirm §7- Reset the world (use with caution)\n§6§l========================"));
+    }
+
+    private void openSettingsGUI(Player player) {
+        Inventory gui = Bukkit.createInventory(null, 9, settingsGUITitle);
+
+        // Item 1: Joker
+        String jokerName = messages.getString("settings-joker-name", "§6Amount of jokers");
+        int currentJokers = defaultJokers;
+        String jokerLore = messages.getString("settings-joker-lore", "§7The §6global amount§7 of §6jokers§7 players can use");
+        String currentText = messages.getString("settings-joker-current", "§eGlobal: %count%").replace("%count%", String.valueOf(currentJokers));
+        ItemStack joker = new ItemStack(Material.BARRIER);
+        ItemMeta jokerMeta = joker.getItemMeta();
+        jokerMeta.setDisplayName(jokerName);
+        jokerMeta.setLore(Arrays.asList(jokerLore, currentText));
+        joker.setItemMeta(jokerMeta);
+        gui.setItem(2, joker);
+
+        // Item 2: Doppelte Ziele
+        String duplicateName = messages.getString("settings-duplicate-name", "§cDuplicate Targets");
+        String duplicateLore = messages.getString("settings-duplicate-lore", "§7Targets can occour §cmultiple times§7 in a session");
+        String duplicateStatus = allowDuplicateTargets ? messages.getString("settings-enabled", "§aEnabled") : messages.getString("settings-disabled", "§cDisabled");
+        ItemStack duplicate = new ItemStack(Material.PAPER);
+        ItemMeta duplicateMeta = duplicate.getItemMeta();
+        duplicateMeta.setDisplayName(duplicateName);
+        duplicateMeta.setLore(Arrays.asList(duplicateLore, duplicateStatus));
+        duplicate.setItemMeta(duplicateMeta);
+        gui.setItem(4, duplicate);
+
+        // Item 3: Joker gibt Item
+        String jokerGivesName = messages.getString("settings-joker-gives-item-name", "§bGive item on joker");
+        String jokerGivesLore = messages.getString("settings-joker-gives-item-lore", "§7If a player uses a §bjoker§7, they also §breceive§7 the item");
+        String jokerGivesStatus = giveItemOnJoker ? messages.getString("settings-enabled", "§aEnabled") : messages.getString("settings-disabled", "§cDisabled");
+        ItemStack jokerGives = new ItemStack(Material.CHEST);
+        ItemMeta jokerGivesMeta = jokerGives.getItemMeta();
+        jokerGivesMeta.setDisplayName(jokerGivesName);
+        jokerGivesMeta.setLore(Arrays.asList(jokerGivesLore, jokerGivesStatus));
+        jokerGives.setItemMeta(jokerGivesMeta);
+        gui.setItem(6, jokerGives);
+
+        player.openInventory(gui);
+    }
+
+    private void updatePlayerJokers(Player player) {
+        UUID uuid = player.getUniqueId();
+        int count = jokerCounts.getOrDefault(uuid, 0);
+        // Entferne alle Barrier aus Inventar
+        for (ItemStack item : player.getInventory().getContents()) {
+            if (item != null && item.getType() == Material.BARRIER) {
+                player.getInventory().removeItem(item);
+            }
+        }
+        // Füge count Barrier hinzu
+        if (count > 0) {
+            ItemStack barrier = new ItemStack(Material.BARRIER, count);
+            ItemMeta meta = barrier.getItemMeta();
+            String jokerItemName = messages.getString("joker-item-name", "§6Joker");
+            String jokerItemLore = messages.getString("joker-item-lore", "§7This is a joker. You cannot use or drop it.");
+            meta.setDisplayName(jokerItemName);
+            meta.setLore(Arrays.asList(jokerItemLore));
+            barrier.setItemMeta(meta);
+            player.getInventory().addItem(barrier);
+        }
+    }
+
+    @EventHandler
+    public void onInventoryClick(InventoryClickEvent event) {
+        if (event.getView().getTitle().equals(settingsGUITitle)) {
+            event.setCancelled(true);
+            if (event.getWhoClicked() instanceof Player) {
+                Player player = (Player) event.getWhoClicked();
+                if (event.getSlot() == 2) { // Joker slot
+                    if (event.isLeftClick()) {
+                        int oldDefault = defaultJokers;
+                        defaultJokers++;
+                        int difference = defaultJokers - oldDefault;
+                        for (Player p : Bukkit.getOnlinePlayers()) {
+                            int currentCount = jokerCounts.getOrDefault(p.getUniqueId(), 0);
+                            jokerCounts.put(p.getUniqueId(), currentCount + difference);
+                            updatePlayerJokers(p);
+                        }
+                    } else if (event.isRightClick()) {
+                        int oldDefault = defaultJokers;
+                        int difference = oldDefault - (oldDefault - 1);
+                        boolean canReduce = jokerCounts.values().stream().allMatch(count -> count >= difference);
+                        if (canReduce && defaultJokers > 0) {
+                            defaultJokers--;
+                            for (Player p : Bukkit.getOnlinePlayers()) {
+                                int currentCount = jokerCounts.getOrDefault(p.getUniqueId(), 0);
+                                jokerCounts.put(p.getUniqueId(), currentCount - difference);
+                                updatePlayerJokers(p);
+                            }
+                        } else if (defaultJokers > 0) {
+                            player.sendMessage(PREFIX + messages.getString("joker-cannot-reduce", "§cCannot reduce jokers: not all players have enough jokers!"));
+                        }
+                    }
+                    player.closeInventory();
+                    openSettingsGUI(player);
+                } else if (event.getSlot() == 4) { // Duplicate targets
+                    allowDuplicateTargets = !allowDuplicateTargets;
+                    config.set("allow-duplicate-targets", allowDuplicateTargets);
+                    saveConfig();
+                    player.closeInventory();
+                    openSettingsGUI(player);
+                } else if (event.getSlot() == 6) { // Give item on joker
+                    giveItemOnJoker = !giveItemOnJoker;
+                    config.set("give-item-on-joker", giveItemOnJoker);
+                    saveConfig();
+                    player.closeInventory();
+                    openSettingsGUI(player);
+                }
+            }
+        }
+    }
+
+    @EventHandler
+    public void onPlayerDropItem(PlayerDropItemEvent event) {
+        if (event.getItemDrop().getItemStack().getType() == Material.BARRIER) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onInventoryClickForJoker(InventoryClickEvent event) {
+        if (event.getCurrentItem() != null && event.getCurrentItem().getType() == Material.BARRIER) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onPlayerInteract(PlayerInteractEvent event) {
+        Player player = event.getPlayer();
+        ItemStack item = event.getItem();
+        if (item != null && item.getType() == Material.BARRIER && (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK)) {
+            if (timerRunning && assignedItems.containsKey(player.getUniqueId())) {
+                int current = jokerCounts.getOrDefault(player.getUniqueId(), 0);
+                if (current > 0) {
+                    jokerCounts.put(player.getUniqueId(), current - 1);
+                    updatePlayerJokers(player);
+                    player.sendMessage(PREFIX + messages.getString("joker-used", "§aJoker used! Skipped to a new item."));
+                    if (giveItemOnJoker) {
+                        Material assignedItem = assignedItems.get(player.getUniqueId());
+                        if (assignedItem != null) {
+                            player.getInventory().addItem(new ItemStack(assignedItem));
+                            player.sendMessage(PREFIX + messages.getString("item-received", "§aYou received the item: §e%item%").replace("%item%", assignedItem.name()));
+                        }
+                    }
+                    assignRandomItem(player);
+                    player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+                    event.setCancelled(true);
+                }
+            } else if (!timerRunning) {
+                player.sendMessage(PREFIX + messages.getString("joker-timer-not-running", "§cYou can only use jokers when the challenge is running!"));
+            }
+        }
     }
 }
