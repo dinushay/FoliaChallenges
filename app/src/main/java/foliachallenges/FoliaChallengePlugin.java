@@ -85,6 +85,8 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
     private Map<UUID, Integer> jokerCounts = new HashMap<>();
     private Map<UUID, Integer> storedJokers = new HashMap<>();
     private int defaultJokers = 0;
+    private boolean allowDuplicateTargets = false;
+    private boolean giveItemOnJoker = false;
     
     private Map<Player, BossBar> bossBars = new HashMap<>();
     private Map<Player, org.bukkit.entity.ArmorStand> itemDisplays = new HashMap<>();
@@ -96,6 +98,8 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         saveDefaultItemBlacklist();
         config = getConfig();
         defaultJokers = config.getInt("default-jokers", 0);
+        allowDuplicateTargets = config.getBoolean("allow-duplicate-targets", false);
+        giveItemOnJoker = config.getBoolean("give-item-on-joker", false);
         messages = YamlConfiguration.loadConfiguration(new File(getDataFolder(), "messages.yml"));
         settingsGUITitle = messages.getString("settings-gui-color", "§b§l") + messages.getString("settings-gui-title", "Random Item Battle Settings");
         loadConfigurableBlacklist();
@@ -286,7 +290,9 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         List<Material> available = new ArrayList<>();
         for (Material m : Material.values()) {
             if (m.isItem() && ItemBlacklist.isObtainable(m) && !configurableBlacklist.contains(m)) {
-                available.add(m);
+                if (allowDuplicateTargets || !assignedItems.containsValue(m)) {
+                    available.add(m);
+                }
             }
         }
         if (!available.isEmpty()) {
@@ -960,20 +966,22 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         // Item 2: Doppelte Ziele
         String duplicateName = messages.getString("settings-duplicate-name", "§cDuplicate Targets");
         String duplicateLore = messages.getString("settings-duplicate-lore", "§7Targets can occour §cmultiple times§7 in a session");
+        String duplicateStatus = allowDuplicateTargets ? "§aEnabled" : "§cDisabled";
         ItemStack duplicate = new ItemStack(Material.PAPER);
         ItemMeta duplicateMeta = duplicate.getItemMeta();
         duplicateMeta.setDisplayName(duplicateName);
-        duplicateMeta.setLore(Arrays.asList(duplicateLore));
+        duplicateMeta.setLore(Arrays.asList(duplicateLore, duplicateStatus));
         duplicate.setItemMeta(duplicateMeta);
         gui.setItem(4, duplicate);
 
         // Item 3: Joker gibt Item
         String jokerGivesName = messages.getString("settings-joker-gives-item-name", "§bGive item on joker");
         String jokerGivesLore = messages.getString("settings-joker-gives-item-lore", "§7If a player uses a §bjoker§7, they also §breceive§7 the item");
+        String jokerGivesStatus = giveItemOnJoker ? "§aEnabled" : "§cDisabled";
         ItemStack jokerGives = new ItemStack(Material.CHEST);
         ItemMeta jokerGivesMeta = jokerGives.getItemMeta();
         jokerGivesMeta.setDisplayName(jokerGivesName);
-        jokerGivesMeta.setLore(Arrays.asList(jokerGivesLore));
+        jokerGivesMeta.setLore(Arrays.asList(jokerGivesLore, jokerGivesStatus));
         jokerGives.setItemMeta(jokerGivesMeta);
         gui.setItem(6, jokerGives);
 
@@ -1035,6 +1043,18 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                     }
                     player.closeInventory();
                     openSettingsGUI(player);
+                } else if (event.getSlot() == 4) { // Duplicate targets
+                    allowDuplicateTargets = !allowDuplicateTargets;
+                    config.set("allow-duplicate-targets", allowDuplicateTargets);
+                    saveConfig();
+                    player.closeInventory();
+                    openSettingsGUI(player);
+                } else if (event.getSlot() == 6) { // Give item on joker
+                    giveItemOnJoker = !giveItemOnJoker;
+                    config.set("give-item-on-joker", giveItemOnJoker);
+                    saveConfig();
+                    player.closeInventory();
+                    openSettingsGUI(player);
                 }
             }
         }
@@ -1065,6 +1085,13 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
                     jokerCounts.put(player.getUniqueId(), current - 1);
                     updatePlayerJokers(player);
                     player.sendMessage(PREFIX + messages.getString("joker-used", "§aJoker used! Skipped to a new item."));
+                    if (giveItemOnJoker) {
+                        Material assignedItem = assignedItems.get(player.getUniqueId());
+                        if (assignedItem != null) {
+                            player.getInventory().addItem(new ItemStack(assignedItem));
+                            player.sendMessage(PREFIX + messages.getString("joker-item-received", "§aYou received the item: §e%item%").replace("%item%", assignedItem.name()));
+                        }
+                    }
                     assignRandomItem(player);
                     player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
                     event.setCancelled(true);
