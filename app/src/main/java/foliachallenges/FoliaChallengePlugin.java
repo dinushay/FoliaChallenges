@@ -955,7 +955,7 @@ public class FoliaChallengePlugin extends JavaPlugin implements Listener, TabCom
         }
         if (data.contains("jokerCounts")) {
             data.getConfigurationSection("jokerCounts").getValues(false).forEach((k, v) -> {
-                try { jokerCounts.put(UUID.fromString(k), (Integer)v); } catch(Exception e){}
+                try { jokerCounts.put(UUID.fromString(k), (Integer)v); } catch(Exception e) { getLogger().warning("Failed to load joker count for " + k + ": " + e.getMessage()); }
             });
         }
         defaultJokers = data.getInt("defaultJokers", defaultJokers);
