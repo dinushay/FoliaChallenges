@@ -16,8 +16,6 @@ Currently, as I write this (January 5th, 2026), only the "Random Item Battle" ch
 
 🟢 = Random Item Battle
 
-🔴 = **Jokers, Double targets and whether the item ends up in the inventory when a joker is used** for Random Item Battle configurable via a settings GUI
-
 🔴 = Random Mob Battle
 
 `🟢 = Available`
@@ -67,10 +65,12 @@ General settings.
 | `/challenges randomitembattle listitems` | List assigned items for all players | `foliachallenges.admin` |
 | `/challenges randomitembattle listpoints` | Show player points and leaderboard | `foliachallenges.admin` |
 | `/challenges randomitembattle blockitem <item>` | Add an item to the blacklist | `foliachallenges.admin` |
+| `/challenges randomitembattle settings` | Opens settings GUI for Random Item Battle | `foliachallenges.admin` |
 | `/challenges reload` | Reload configuration and messages | `foliachallenges.admin` |
 | `/timer start` | Start the challenge timer | `foliachallenges.admin` |
 | `/timer stop` | Stop the challenge timer | `foliachallenges.admin` |
 | `/timer set <minutes>` | Set the timer duration | `foliachallenges.admin` |
+| `/settings` | Opens settings GUI | `foliachallenges.admin` |
 | `/start` | Start the challenge timer | `foliachallenges.admin` |
 | `/reset confirm` | Reset the world (irreversible!) | `foliachallenges.admin` |
 
